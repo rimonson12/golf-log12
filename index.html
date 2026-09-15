@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Golf Log">
+<meta name="theme-color" content="#F9F9F6">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Golf Log</title>
+<style>
+:root{
+  --paper:#F9F9F6; --card:#FFFFFF; --ink:#182119; --mute:#6A716C; --line:#E1E4DE;
+  --green:#1F6B3E; --green-soft:#E4EFE7; --red:#B0392E; --red-soft:#F7E6E3;
+  --amber:#A8701A; --amber-soft:#F6ECD9; --tap:54px; --r:12px;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;overscroll-behavior:none}
+body{padding-top:var(--sat);-webkit-user-select:none;user-select:none}
+input,textarea,select{font:inherit;color:inherit;-webkit-user-select:text;user-select:text}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+#app{padding:12px 14px calc(76px + var(--sab));max-width:560px;margin:0 auto;min-height:100vh}
+h1{font-size:26px;font-weight:700;margin:6px 0 14px;letter-spacing:-0.02em}
+h2{font-size:17px;font-weight:600;margin:20px 0 8px}
+.sub{color:var(--mute);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.flat{border:0;background:none;padding:0;border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:10px}
+.row.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--card)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.green{background:var(--green);color:#fff;border-color:var(--green)}
+.btn.danger{color:var(--red);border-color:var(--red);border-style:dashed;background:none}
+.btn.small{min-height:36px;padding:0 12px;font-size:14px;font-weight:600}
+.btn.block{width:100%}
+.btn:disabled{opacity:.45}
+.stack{display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;background:#ECEEEA;border-radius:10px;padding:3px}
+.seg button{flex:1;min-height:40px;border-radius:8px;font-weight:600;color:var(--mute)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+label.f{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+.in{width:100%;min-height:46px;padding:0 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+textarea.in{min-height:80px;padding:10px 12px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.badge.real{background:var(--green-soft);color:var(--green)}
+.badge.sim{background:var(--amber-soft);color:var(--amber)}
+.badge.gray{background:#ECEEEA;color:var(--mute)}
+.badge.red{background:var(--red-soft);color:var(--red)}
+.list .item{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.list .item:last-child{border-bottom:0}
+.empty{padding:30px 16px;text-align:center;color:var(--mute)}
+/* tab bar */
+#tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(247,247,244,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab);z-index:5}
+#tabs button{flex:1;min-height:60px;font-size:12px;font-weight:600;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+#tabs button.on{color:var(--green)}
+#tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+/* hole screen */
+.holehead{display:flex;align-items:flex-end;justify-content:space-between;margin:2px 0 12px}
+.holehead .hn{font-size:60px;line-height:.9;font-weight:800;letter-spacing:-0.05em}
+.holehead .meta{color:var(--mute);font-size:14px;margin-top:4px}
+.holehead .score{text-align:right}
+.holehead .score b{font-size:44px;line-height:1;font-weight:800;letter-spacing:-0.03em;display:block}
+.holehead .score span{font-size:13px;color:var(--mute)}
+.nav{display:flex;gap:8px;margin:0 0 12px}
+.nav .btn{flex:1}
+.shotrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.shotrow .idx{width:22px;color:var(--mute);font-size:13px}
+.shotrow .club{font-weight:700;width:44px}
+.shotrow .res{flex:1}
+.shotrow .res.good{color:var(--green)} .shotrow .res.pen{color:var(--red)}
+.shotrow .det{font-size:12px;color:var(--mute)}
+.shotrow button.x{min-width:40px;min-height:40px;color:var(--mute);font-size:20px}
+.clubs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.clubs button{min-height:46px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:15px}
+.clubs button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+.target{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.target button{min-height:58px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:16px}
+.target .good{background:var(--ink);color:#fff;border-color:var(--ink)}
+.target .pen{grid-column:1/4;background:none;color:var(--red);border:1px dashed var(--red);min-height:44px}
+.target .ph{visibility:hidden}
+.step{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+.step .ctl{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.step .ctl button{width:52px;height:46px;font-size:24px;font-weight:500}
+.step .ctl b{width:44px;text-align:center;font-size:20px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-weight:600}
+.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chips button.on.bad{background:var(--red);border-color:var(--red)}
+.chips button.on.good{background:var(--green);border-color:var(--green)}
+/* stats */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kpi b{display:block;font-size:24px;font-weight:800;letter-spacing:-0.03em}
+.kpi span{font-size:12px;color:var(--mute)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 4px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--mute);font-size:12px}
+th:first-child,td:first-child{text-align:left}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.sheet{position:fixed;inset:0;background:rgba(22,36,28,.45);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet .pane{background:var(--paper);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + var(--sab));max-height:88vh;overflow:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + var(--sab));background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.holes-grid{display:grid;grid-template-columns:34px 1fr 1fr;gap:6px;align-items:center;font-size:14px}
+.holes-grid input{min-height:40px;padding:0 8px;text-align:center}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dot.ok{background:var(--green)} .dot.wait{background:var(--amber)}
+/* scorecard notation: circle=birdie, double circle=eagle (bold), square=bogey, double square=double+ (bold) */
+.mark{position:relative;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.mark::before,.mark::after{content:"";position:absolute;border:1.5px solid transparent;pointer-events:none}
+.mark.b,.mark.bb{color:var(--green)} .mark.o,.mark.oo{color:var(--red)} .mark.e{color:var(--mute)}
+.mark.b::after,.mark.bb::after,.mark.bb::before{border-color:var(--green);border-radius:50%}
+.mark.o::after,.mark.oo::after,.mark.oo::before{border-color:var(--red);border-radius:2px}
+.mark.b::after,.mark.o::after{inset:1px}
+.mark.bb::after,.mark.oo::after{inset:-1px} .mark.bb::before,.mark.oo::before{inset:3px}
+.mark.bb,.mark.oo{font-weight:800}
+.strip{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin:0 0 14px}
+.strip button{aspect-ratio:1;border:1px solid var(--line);border-radius:4px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.strip button.cur{border:2px solid var(--ink)}
+.strip .mark{width:22px;height:22px;font-size:13px}
+.scoretbl .mark{width:24px;height:24px;font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav id="tabs"></nav>
+<div class="toast" id="toast"></div>
+<script>
+/* ===================== storage ===================== */
+const K='golflog.v2';
+const DEF_CLUBS=['Dr','3W','Hy','4i','5i','6i','7i','8i','9i','PW','50','54','58'];
+const RESULTS={good:'Good',left:'Left',right:'Right',short:'Short',long:'Long',pen:'Penalty'};
+const LIES=['Tee','Fairway','Rough','Sand','Fringe','Recovery'];
+const STRIKES=['Center','Heel','Toe','Thin','Fat'];
+let DB={rounds:[],courses:[],active:null,settings:{clubs:DEF_CLUBS.slice(),sheetUrl:'',defaultMode:'shots',defaultType:'Real'}};
+function load(){try{const s=localStorage.getItem(K);if(s){const d=JSON.parse(s);DB={...DB,...d,settings:{...DB.settings,...(d.settings||{})}}}}catch(e){}}
+function save(){try{localStorage.setItem(K,JSON.stringify(DB))}catch(e){toast('Could not save — storage full?')}}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
+const fmtPar=n=>n===0?'E':(n>0?'+'+n:String(n));
+const pct=(a,b)=>b?Math.round(100*a/b)+'%':'–';
+const fx=(n,d=1)=>n==null||isNaN(n)?'–':n.toFixed(d);
+
+/* ===================== hole math ===================== */
+function penalties(h){return (h.shots||[]).filter(s=>s.result==='pen').length + (h.mode==='quick'?(h.pen||0):0)}
+function holeCalc(h){
+  const isShots=h.mode==='shots';
+  const shots=h.shots||[];
+  const pen=isShots?shots.filter(s=>s.result==='pen').length:(h.pen||0);
+  const putts=h.putts||0;
+  let score,fir,gir;
+  if(isShots){
+    score=shots.length+pen+putts;
+    if(h.par>=4&&shots.length){const r=shots[0].result;fir=r==='good'?'hit':(r==='left'||r==='right')?r:'miss'}else fir=null;
+    gir=shots.length? (shots.length+pen)<=h.par-2 : null;
+  }else{
+    score=h.score||0;
+    fir=h.par>=4?(h.fir||null):null;
+    gir=h.gir==null?null:!!h.gir;
+  }
+  const logged=isShots?shots.length>0:(h.score||0)>0;
+  const scr=(gir===false&&logged)?(score<=h.par):null;
+  return {score,pen,putts,fir,gir,scr,logged,toPar:score-h.par};
+}
+function markCls(toPar){return toPar<=-2?'bb':toPar===-1?'b':toPar===0?'e':toPar===1?'o':'oo'}
+function markHtml(h){const c=holeCalc(h);return c.logged?`<span class="mark ${markCls(c.toPar)}">${c.score}</span>`:'<span class="mark"></span>'}
+function stripHtml(r,cur,onclick){return `<div class="strip">${r.holes.map((h,i)=>`<button class="${i===cur?'cur':''}" ${onclick?`onclick="${onclick}(${i})"`:''} aria-label="Hole ${h.n}">${markHtml(h)}</button>`).join('')}</div>`}
+function jumpHole(i){sub.club=null;sub.detail=null;DB.active.cur=i;save();render()}
+function roundCalc(r){
+  const hs=r.holes.map(h=>({h,c:holeCalc(h)})).filter(x=>x.c.logged);
+  const t={holes:hs.length,score:0,par:0,putts:0,pen:0,firH:0,firO:0,girH:0,girO:0,scrH:0,scrO:0,threeP:0};
+  hs.forEach(({h,c})=>{t.score+=c.score;t.par+=h.par;t.putts+=c.putts;t.pen+=c.pen;
+    if(c.fir){t.firO++;if(c.fir==='hit')t.firH++}
+    if(c.gir!=null){t.girO++;if(c.gir)t.girH++}
+    if(c.scr!=null){t.scrO++;if(c.scr)t.scrH++}
+    if(c.putts>=3)t.threeP++});
+  t.toPar=t.score-t.par;
+  t.diff=(t.holes===18&&r.rating&&r.slope)?Math.round((t.score-r.rating)*113/r.slope*10)/10:null;
+  return t;
+}
+/* WHS handicap index estimate from differentials (most recent first): best N of last 20 with the small-sample table */
+function handicapIndex(diffs){const d=diffs.slice(0,20);const n=d.length;if(n<3)return null;
+  const N=n<=5?1:n<=8?2:n<=11?3:n<=14?4:n<=16?5:n<=18?6:n===19?7:8;const adj=n===3?-2:n===4?-1:n===6?-1:0;
+  const best=[...d].sort((a,b)=>a-b).slice(0,N);return Math.round((best.reduce((a,b)=>a+b,0)/N+adj)*10)/10}
+function newHoles(course,start,count){
+  const hs=[];for(let i=0;i<count;i++){const n=start+i;const ch=course?course.holes[n-1]:null;
+    hs.push({n,par:ch?ch.par:4,yds:ch?ch.yds:0,mode:DB.active?.mode||'shots',shots:[],putts:0,score:0,fir:null,gir:null,pen:0})}
+  return hs;
+}
+
+/* ===================== router ===================== */
+let view='play',sub={};
+const ICONS={
+  play:'<svg viewBox="0 0 24 24"><path d="M6 20V4l10 4-10 4"/><path d="M4 20h6"/></svg>',
+  rounds:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+  stats:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
+  courses:'<svg viewBox="0 0 24 24"><path d="M12 22s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'};
+function go(v,s={}){view=v;sub=s;render();window.scrollTo(0,0)}
+function render(){
+  document.getElementById('tabs').innerHTML=['play','rounds','stats','courses','settings'].map(v=>`<button class="${view===v?'on':''}" onclick="go('${v}')">${ICONS[v]}<span>${v[0].toUpperCase()+v.slice(1)}</span></button>`).join('');
+  const app=document.getElementById('app');
+  app.innerHTML=({play:vPlay,rounds:vRounds,stats:vStats,courses:vCourses,settings:vSettings})[view]();
+}
+
+/* ===================== PLAY ===================== */
+function vPlay(){
+  if(DB.active) return vHole();
+  const cs=DB.courses;
+  const f=sub.form||(sub.form={date:today(),courseId:cs[0]?.id||'',type:DB.settings.defaultType,mode:DB.settings.defaultMode,span:'18'});
+  return `<h1>New round</h1>
+  <div class="card">
+    <label class="f">Course</label>
+    <select class="in" onchange="sub.form.courseId=this.value">${cs.length?cs.map(c=>`<option value="${c.id}" ${c.id===f.courseId?'selected':''}>${esc(c.name)}</option>`).join(''):'<option value="">No courses yet</option>'}</select>
+    ${cs.length?'':'<p class="sub" style="margin:8px 0 0">Add a course in the Courses tab first, or start without one (par 4s, edit as you go).</p>'}
+    <label class="f">Date</label><input class="in" type="date" value="${f.date}" onchange="sub.form.date=this.value">
+    <label class="f">Round type</label>
+    <div class="seg"><button class="${f.type==='Real'?'on':''}" onclick="sub.form.type='Real';render()">Real</button><button class="${f.type==='Sim'?'on':''}" onclick="sub.form.type='Sim';render()">Simulator</button></div>
+    <label class="f">Entry</label>
+    <div class="seg"><button class="${f.mode==='shots'?'on':''}" onclick="sub.form.mode='shots';render()">Every shot</button><button class="${f.mode==='quick'?'on':''}" onclick="sub.form.mode='quick';render()">Quick</button></div>
+    <p class="sub" style="margin:6px 0 0">${f.mode==='shots'?'Two taps per shot: club, then result. Details are optional.':'Score, putts, fairway, green, penalties per hole.'}</p>
+    <label class="f">Holes</label>
+    <div class="seg"><button class="${f.span==='18'?'on':''}" onclick="sub.form.span='18';render()">18</button><button class="${f.span==='F9'?'on':''}" onclick="sub.form.span='F9';render()">Front 9</button><button class="${f.span==='B9'?'on':''}" onclick="sub.form.span='B9';render()">Back 9</button></div>
+  </div>
+  <button class="btn primary block" style="min-height:54px" onclick="startRound()">Start round</button>
+  ${pendingCount()?`<p class="sub" style="text-align:center;margin-top:14px">${pendingCount()} round${pendingCount()>1?'s':''} waiting to push to Sheets</p>`:''}`;
+}
+function pendingCount(){return DB.rounds.filter(r=>!r.pushed).length}
+function startRound(){
+  const f=sub.form;const c=DB.courses.find(x=>x.id===f.courseId);
+  const start=f.span==='B9'?10:1,count=f.span==='18'?18:9;
+  DB.active={id:uid(),date:f.date,courseId:c?.id||'',courseName:c?c.name:'No course',type:f.type,mode:f.mode,rating:c?.rating||null,slope:c?.slope||null,holes:[],notes:'',cur:0,pushed:false,createdAt:Date.now()};
+  DB.active.holes=newHoles(c,start,count);
+  save();sub={};render();
+}
+function vHole(){
+  const r=DB.active,h=r.holes[r.cur],c=holeCalc(h),rc=roundCalc(r);
+  const last=r.cur===r.holes.length-1;
+  return `<div class="row between" style="margin-bottom:6px">
+    <div class="sub">${esc(r.courseName)} <span class="badge ${r.type==='Sim'?'sim':'real'}">${r.type}</span></div>
+    <div class="row" style="gap:6px"><button class="btn small" onclick="toggleHoleMode()">${h.mode==='shots'?'Quick entry':'Shot entry'}</button><button class="btn small" onclick="finishSheet()">Finish</button></div>
+  </div>
+  ${stripHtml(r,r.cur,'jumpHole')}
+  <div class="holehead">
+    <div><div class="hn num">${h.n}</div><div class="meta">Par <b>${h.par}</b> · ${h.yds||'–'} yds <button class="btn small" style="margin-left:6px;min-height:28px;padding:0 8px" onclick="editHoleInfo()">edit</button></div></div>
+    <div class="score"><b class="num">${c.logged?c.score:'–'}</b><span>${c.logged?fmtPar(c.toPar):'this hole'} · round ${rc.holes?fmtPar(rc.toPar):'E'} thru ${rc.holes}</span></div>
+  </div>
+  ${h.mode==='shots'?vShotsEntry(h,c):vQuickEntry(h,c)}
+  <div class="nav" style="margin-top:14px">
+    <button class="btn" ${r.cur===0?'disabled':''} onclick="sub.club=null;sub.detail=null;DB.active.cur--;save();render()">${r.cur===0?'First hole':'‹ Hole '+(h.n-1)}</button>
+    ${last?`<button class="btn green" onclick="finishSheet()">Finish round</button>`:`<button class="btn primary" onclick="sub.club=null;sub.detail=null;DB.active.cur++;save();render()">Hole ${h.n+1} ›</button>`}
+  </div>`;
+}
+function toggleHoleMode(){const h=DB.active.holes[DB.active.cur];h.mode=h.mode==='shots'?'quick':'shots';save();render()}
+function editHoleInfo(){const h=DB.active.holes[DB.active.cur];
+  openSheet(`<h2 style="margin-top:0">Hole ${h.n}</h2><label class="f">Par</label><div class="chips">${[3,4,5].map(p=>`<button class="${h.par===p?'on':''}" onclick="DB.active.holes[${DB.active.cur}].par=${p};save();editHoleInfo()">${p}</button>`).join('')}</div>
+  <label class="f">Yards</label><input class="in" type="number" inputmode="numeric" value="${h.yds||''}" onchange="DB.active.holes[${DB.active.cur}].yds=+this.value||0;save()">
+  <button class="btn primary block" style="margin-top:14px" onclick="closeSheet()">Done</button>`)}
+
+function vShotsEntry(h,c){
+  const sel=sub.club;
+  return `<div class="flat" style="margin-bottom:12px">
+    ${h.shots.length?h.shots.map((s,i)=>`<div class="shotrow"><span class="idx num">${i+1}</span><span class="club">${esc(s.club)}</span><span class="res ${s.result==='good'?'good':s.result==='pen'?'pen':''}">${RESULTS[s.result]}${s.result==='pen'?' +1':''}<div class="det">${[s.lie,s.strike,s.prox!=null?s.prox+' ft':null].filter(Boolean).join(' · ')}</div></span><button class="x" aria-label="Details" onclick="shotDetail(${i})">…</button><button class="x" aria-label="Delete" onclick="delShot(${i})">×</button></div>`).join(''):`<div class="empty" style="padding:12px;border-bottom:1px solid var(--line)">Tap a club to log your tee shot</div>`}
+  </div>
+  ${sub.detail!=null&&h.shots[sub.detail]?vShotDetailPanel(h,sub.detail)
+  :sel?`<div class="row between"><b>${esc(sel)} — where did it go?</b><button class="btn small" onclick="sub.club=null;render()">Cancel</button></div>
+    <div class="target">
+      <button class="ph"></button><button onclick="addShot('long')">Long</button><button class="ph"></button>
+      <button onclick="addShot('left')">Left</button><button class="good" onclick="addShot('good')">Good</button><button onclick="addShot('right')">Right</button>
+      <button class="ph"></button><button onclick="addShot('short')">Short</button><button class="ph"></button>
+      <button class="pen" onclick="addShot('pen')">Penalty (+1)</button>
+    </div>`
+  :`<div class="clubs">${DB.settings.clubs.map((k,i)=>`<button onclick="sub.club=DB.settings.clubs[${i}];render()">${esc(k)}</button>`).join('')}</div>`}
+  <div class="flat" style="margin-top:12px">
+    <div class="step"><span>Putts</span><div class="ctl"><button onclick="bump('putts',-1)">−</button><b class="num">${h.putts}</b><button onclick="bump('putts',1)">+</button></div></div>
+  </div>`;
+}
+function addShot(result){const h=DB.active.holes[DB.active.cur];const prev=h.shots[h.shots.length-1];
+  let lie='Tee';if(prev){lie=prev.result==='good'?'Fairway':prev.result==='pen'?(prev.lie||'Tee'):'Rough'}
+  h.shots.push({club:sub.club,result,lie,strike:null,prox:null});sub.club=null;sub.detail=h.shots.length-1;save();render()}
+function vShotDetailPanel(h,i){const s=h.shots[i];
+  const chips=(k,opts)=>`<div class="chips">${opts.map(o=>`<button class="${s[k]===o?'on':''}" onclick="setShotInline(${i},'${k}',${s[k]===o?'null':`'${o}'`})">${o}</button>`).join('')}</div>`;
+  return `<div class="card" style="border-color:var(--ink)">
+    <div class="row between"><b>Shot ${i+1} · ${esc(s.club)} · <span style="color:${s.result==='good'?'var(--green)':s.result==='pen'?'var(--red)':'inherit'}">${RESULTS[s.result]}</span></b><button class="btn small" onclick="delShot(${i})">Undo</button></div>
+    <label class="f">Lie</label>${chips('lie',LIES)}
+    <label class="f">Strike</label>${chips('strike',STRIKES)}
+    <label class="f">Finished this far from the hole (feet)</label>
+    <input class="in" type="number" inputmode="numeric" placeholder="leave blank for tee shots" value="${s.prox??''}" onchange="DB.active.holes[DB.active.cur].shots[${i}].prox=this.value===''?null:+this.value;save()">
+    <button class="btn primary block" style="margin-top:14px" onclick="sub.detail=null;render()">Next shot</button>
+  </div>`}
+function setShotInline(i,k,v){DB.active.holes[DB.active.cur].shots[i][k]=v;save();render()}
+function delShot(i){DB.active.holes[DB.active.cur].shots.splice(i,1);sub.detail=null;save();render()}
+function bump(k,d){const h=DB.active.holes[DB.active.cur];h[k]=Math.max(0,(h[k]||0)+d);save();render()}
+function shotDetail(i){const h=DB.active.holes[DB.active.cur],s=h.shots[i];
+  openSheet(`<div class="row between"><h2 style="margin:0">Shot ${i+1} · ${esc(s.club)} · ${RESULTS[s.result]}</h2><button class="btn small" onclick="closeSheet()">Done</button></div>
+  <label class="f">Result</label><div class="chips">${Object.entries(RESULTS).map(([k,v])=>`<button class="${s.result===k?'on':''} ${k==='pen'?'bad':k==='good'?'good':''}" onclick="setShot(${i},'result','${k}')">${v}</button>`).join('')}</div>
+  <label class="f">Lie</label><div class="chips">${LIES.map(l=>`<button class="${s.lie===l?'on':''}" onclick="setShot(${i},'lie','${l}')">${l}</button>`).join('')}</div>
+  <label class="f">Strike</label><div class="chips">${STRIKES.map(l=>`<button class="${s.strike===l?'on':''}" onclick="setShot(${i},'strike',${s.strike===l?'null':`'${l}'`})">${l}</button>`).join('')}</div>
+  <label class="f">Finished this far from the hole (feet) — for approaches and chips</label>
+  <input class="in" type="number" inputmode="numeric" placeholder="e.g. 18" value="${s.prox??''}" onchange="setShot(${i},'prox',this.value===''?null:+this.value)">`)}
+function setShot(i,k,v){DB.active.holes[DB.active.cur].shots[i][k]=v;save();render();shotDetail(i)}
+
+function vQuickEntry(h,c){
+  const chip=(k,v,label,cls='')=>`<button class="${h[k]===v?'on '+cls:''}" onclick="setQ('${k}',${typeof v==='string'?"'"+v+"'":v})">${label}</button>`;
+  return `<div class="card" style="padding:6px 14px">
+    <div class="step"><span>Score</span><div class="ctl"><button onclick="bumpQ(-1)">−</button><b class="num">${h.score||'–'}</b><button onclick="bumpQ(1)">+</button></div></div>
+    <div class="step"><span>Putts</span><div class="ctl"><button onclick="bump('putts',-1)">−</button><b class="num">${h.putts}</b><button onclick="bump('putts',1)">+</button></div></div>
+    <div class="step"><span>Penalty strokes</span><div class="ctl"><button onclick="bump('pen',-1)">−</button><b class="num">${h.pen||0}</b><button onclick="bump('pen',1)">+</button></div></div>
+  </div>
+  ${h.par>=4?`<label class="f">Fairway</label><div class="chips">${chip('fir','hit','Hit','good')}${chip('fir','left','Left','bad')}${chip('fir','right','Right','bad')}${chip('fir','miss','Short/other','bad')}</div>`:''}
+  <label class="f">Green in regulation</label><div class="chips">${chip('gir',true,'Hit','good')}${chip('gir',false,'Missed','bad')}</div>`;
+}
+function bumpQ(d){const h=DB.active.holes[DB.active.cur];h.score=Math.max(0,(h.score||h.par)+d);save();render()}
+function setQ(k,v){const h=DB.active.holes[DB.active.cur];h[k]=h[k]===v?null:v;if(!h.score)h.score=h.par;save();render()}
+
+function finishSheet(){const r=DB.active,rc=roundCalc(r);
+  openSheet(`<h2 style="margin-top:0">Finish round?</h2>
+  <p>${rc.holes} of ${r.holes.length} holes logged · <b class="num">${rc.score} (${fmtPar(rc.toPar)})</b></p>
+  <div class="row"><div class="grow"><label class="f">Course rating</label><input class="in" type="number" inputmode="decimal" step="0.1" placeholder="72.4" value="${r.rating??''}" onchange="DB.active.rating=+this.value||null;save()"></div><div class="grow"><label class="f">Slope</label><input class="in" type="number" inputmode="numeric" placeholder="131" value="${r.slope??''}" onchange="DB.active.slope=+this.value||null;save()"></div></div>
+  <label class="f">Notes</label><textarea class="in" onchange="DB.active.notes=this.value;save()">${esc(r.notes)}</textarea>
+  <div class="stack" style="margin-top:14px">
+    <button class="btn green block" onclick="finishRound()">Save round</button>
+    <button class="btn block" onclick="closeSheet()">Keep playing</button>
+    <button class="btn danger block" onclick="if(confirm('Discard this round?')){DB.active=null;save();closeSheet();render()}">Discard round</button>
+  </div>`)}
+function finishRound(){const r=DB.active;r.finishedAt=Date.now();r.pushed=false;
+  const i=DB.rounds.findIndex(x=>x.id===r.id);if(i>=0)DB.rounds[i]=r;else DB.rounds.unshift(r);
+  DB.active=null;save();closeSheet();go('rounds',{open:r.id});pushRound(r,true);}
+
+/* ===================== ROUNDS ===================== */
+function vRounds(){
+  if(sub.open){const r=DB.rounds.find(x=>x.id===sub.open);if(r)return vRoundDetail(r)}
+  const rs=[...DB.rounds].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+  return `<div class="row between"><h1>Rounds</h1>${pendingCount()?`<button class="btn small green" onclick="syncAll()">Push ${pendingCount()} to Sheets</button>`:''}</div>
+  ${rs.length?`<div class="card list" style="padding:0 14px">${rs.map(r=>{const c=roundCalc(r);return `<button class="item" onclick="go('rounds',{open:'${r.id}'})">
+    <span class="dot ${r.pushed?'ok':'wait'}" title="${r.pushed?'Pushed':'Not pushed'}"></span>
+    <div class="grow"><div style="font-weight:600">${esc(r.courseName)}</div><div class="sub">${r.date} · ${c.holes} holes · ${r.mode==='shots'?'shots':'quick'}</div></div>
+    <span class="badge ${r.type==='Sim'?'sim':'real'}">${r.type}</span>
+    <b class="num" style="font-size:20px;width:70px;text-align:right">${c.score} <span class="sub" style="font-weight:600">${fmtPar(c.toPar)}</span></b></button>`}).join('')}</div>`
+  :`<div class="card empty">No rounds yet. Start one in Play.</div>`}`;
+}
+function vRoundDetail(r){const c=roundCalc(r);
+  return `<button class="btn small" onclick="go('rounds')">‹ Rounds</button>
+  <h1 style="margin-top:12px">${esc(r.courseName)}</h1>
+  <p class="sub" style="margin:-8px 0 12px">${r.date} · <span class="badge ${r.type==='Sim'?'sim':'real'}">${r.type}</span> · ${r.mode==='shots'?'shot entry':'quick entry'} · ${r.pushed?'<span class="badge gray">Pushed '+new Date(r.pushedAt).toLocaleDateString()+'</span>':'<span class="badge red">Not pushed</span>'}</p>
+  <div class="kpis">
+    <div class="kpi"><b class="num">${c.score}</b><span>${fmtPar(c.toPar)} · ${c.holes} holes</span></div>
+    <div class="kpi"><b class="num">${c.putts}</b><span>putts</span></div>
+    <div class="kpi"><b class="num">${c.pen}</b><span>penalty strokes</span></div>
+    <div class="kpi"><b class="num">${pct(c.firH,c.firO)}</b><span>fairways</span></div>
+    <div class="kpi"><b class="num">${pct(c.girH,c.girO)}</b><span>greens</span></div>
+    <div class="kpi"><b class="num">${pct(c.scrH,c.scrO)}</b><span>scrambling</span></div>
+    <div class="kpi"><b class="num">${c.diff==null?'–':fx(c.diff)}</b><span>differential${r.rating?' · '+r.rating+' / '+r.slope:''}</span></div>
+  </div>
+  <div style="margin-top:14px">${stripHtml(r,-1,null)}</div>
+  <div class="card tscroll"><table class="scoretbl"><tr><th>Hole</th><th>Par</th><th>Score</th><th>Putts</th><th>FIR</th><th>GIR</th><th>Pen</th></tr>
+  ${r.holes.map(h=>{const x=holeCalc(h);if(!x.logged)return '';return `<tr><td>${h.n}</td><td>${h.par}</td><td>${markHtml(h)}</td><td>${x.putts}</td><td>${x.fir==null?'':x.fir==='hit'?'✓':x.fir==='miss'?'✗':x.fir[0].toUpperCase()}</td><td>${x.gir==null?'':x.gir?'✓':'✗'}</td><td>${x.pen||''}</td></tr>`}).join('')}</table></div>
+  ${r.notes?`<div class="card"><div class="sub">Notes</div>${esc(r.notes)}</div>`:''}
+  <div class="stack">
+    <button class="btn green block" onclick="pushRound(DB.rounds.find(x=>x.id==='${r.id}'))">${r.pushed?'Push again':'Push to Sheets'}</button>
+    <button class="btn block" onclick="reopenRound('${r.id}')">Edit round</button>
+    <button class="btn block" onclick="copyCSV('${r.id}')">Copy as CSV</button>
+    <button class="btn danger block" onclick="if(confirm('Delete this round?')){DB.rounds=DB.rounds.filter(x=>x.id!=='${r.id}');save();go('rounds')}">Delete round</button>
+  </div>`;
+}
+function reopenRound(id){if(DB.active&&!confirm('A round is in progress. Replace it?'))return;const r=DB.rounds.find(x=>x.id===id);DB.active=JSON.parse(JSON.stringify(r));DB.active.cur=0;save();go('play')}
+
+/* ===================== PUSH TO SHEETS ===================== */
+function payload(r){const c=roundCalc(r);const base={roundId:r.id,date:r.date,course:r.courseName,type:r.type,mode:r.mode};
+  const holes=[],shots=[];
+  r.holes.forEach(h=>{const x=holeCalc(h);if(!x.logged)return;
+    holes.push({...base,hole:h.n,par:h.par,yds:h.yds||'',score:x.score,toPar:x.toPar,putts:x.putts,pen:x.pen,fir:x.fir??'',gir:x.gir==null?'':(x.gir?1:0),scramble:x.scr==null?'':(x.scr?1:0)});
+    if(h.mode==='shots')h.shots.forEach((s,i)=>shots.push({...base,hole:h.n,par:h.par,shot:i+1,club:s.club,lie:s.lie||'',result:RESULTS[s.result],strike:s.strike||'',prox:s.prox??''}));
+  });
+  return {round:{...base,holes:c.holes,score:c.score,par:c.par,toPar:c.toPar,putts:c.putts,pen:c.pen,firHit:c.firH,firOpp:c.firO,girHit:c.girH,girOpp:c.girO,scrHit:c.scrH,scrOpp:c.scrO,threePutts:c.threeP,notes:r.notes||'',rating:r.rating??'',slope:r.slope??'',differential:c.diff??''},holes,shots};
+}
+async function pushRound(r,quiet){
+  const url=DB.settings.sheetUrl;if(!url){if(!quiet){toast('Add your Sheets script URL in Settings')}return false}
+  if(!navigator.onLine){if(!quiet)toast('Offline — will push when you have signal');return false}
+  try{
+    const res=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload(r))});
+    const j=await res.json();
+    if(!j.ok)throw new Error(j.error||'Script error');
+    r.pushed=true;r.pushedAt=Date.now();save();render();toast('Pushed to Sheets');return true;
+  }catch(e){if(!quiet)toast('Push failed: '+(e.message||'network'));return false}
+}
+async function syncAll(){let n=0;for(const r of DB.rounds.filter(x=>!x.pushed)){if(await pushRound(r,true))n++;else break}
+  toast(n?`Pushed ${n} round${n>1?'s':''}`:'Nothing pushed — check signal or Settings')}
+window.addEventListener('online',()=>{if(pendingCount()&&DB.settings.sheetUrl)syncAll()});
+function copyCSV(id){const p=payload(DB.rounds.find(x=>x.id===id));
+  const line=o=>Object.values(o).map(v=>/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':v).join(',');
+  const blk=(name,rows)=>rows.length?`# ${name}\n${Object.keys(rows[0]).join(',')}\n${rows.map(line).join('\n')}\n`:'';
+  const txt=blk('Rounds',[p.round])+blk('Holes',p.holes)+blk('Shots',p.shots);
+  navigator.clipboard?.writeText(txt).then(()=>toast('CSV copied'),()=>prompt('Copy this:',txt))}
+
+/* ===================== STATS ===================== */
+function vStats(){
+  const f=sub.filter||'All';
+  const rs=DB.rounds.filter(r=>f==='All'||r.type===f).sort((a,b)=>a.date.localeCompare(b.date)||a.createdAt-b.createdAt);
+  const seg=`<div class="seg" style="margin-bottom:12px">${['Real','Sim','All'].map(x=>`<button class="${f===x?'on':''}" onclick="sub.filter='${x}';render()">${x==='All'?'Combined':x==='Sim'?'Simulator':x}</button>`).join('')}</div>`;
+  if(!rs.length)return `<h1>Stats</h1>${seg}<div class="card empty">No ${f==='All'?'':f.toLowerCase()+' '}rounds yet.</div>`;
+  const T={holes:0,toPar:0,putts:0,pen:0,firH:0,firO:0,girH:0,girO:0,scrH:0,scrO:0,threeP:0,p3:[0,0],p4:[0,0],p5:[0,0]};
+  const club={};let proxN=0,proxSum=0;
+  const diffs=[];
+  rs.forEach(r=>{const c=roundCalc(r);if(c.diff!=null)diffs.push(c.diff);T.holes+=c.holes;T.toPar+=c.toPar;T.putts+=c.putts;T.pen+=c.pen;T.firH+=c.firH;T.firO+=c.firO;T.girH+=c.girH;T.girO+=c.girO;T.scrH+=c.scrH;T.scrO+=c.scrO;T.threeP+=c.threeP;
+    r.holes.forEach(h=>{const x=holeCalc(h);if(!x.logged)return;const k='p'+Math.min(5,Math.max(3,h.par));T[k][0]+=x.toPar;T[k][1]++;
+      if(h.mode==='shots')h.shots.forEach(s=>{const o=club[s.club]||(club[s.club]={n:0,good:0,left:0,right:0,short:0,long:0,pen:0,heel:0,toe:0,proxN:0,proxSum:0});o.n++;o[s.result]++;if(s.strike==='Heel')o.heel++;if(s.strike==='Toe')o.toe++;if(s.prox!=null){o.proxN++;o.proxSum+=s.prox;proxN++;proxSum+=s.prox}})});
+  });
+  const per18=v=>T.holes?v/T.holes*18:null;
+  const order=DB.settings.clubs;const clubs=Object.keys(club).sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+  return `<h1>Stats</h1>${seg}
+  <p class="sub" style="margin:0 0 10px">${rs.length} round${rs.length>1?'s':''} · ${T.holes} holes</p>
+  <div class="kpis">
+    <div class="kpi"><b class="num">${per18(T.toPar)==null?'–':fmtPar(Math.round(per18(T.toPar)*10)/10)}</b><span>avg to par (18)</span></div>
+    <div class="kpi"><b class="num">${fx(per18(T.putts))}</b><span>putts / 18</span></div>
+    <div class="kpi"><b class="num">${fx(per18(T.pen))}</b><span>penalties / 18</span></div>
+    <div class="kpi"><b class="num">${pct(T.firH,T.firO)}</b><span>fairways</span></div>
+    <div class="kpi"><b class="num">${pct(T.girH,T.girO)}</b><span>greens</span></div>
+    <div class="kpi"><b class="num">${pct(T.scrH,T.scrO)}</b><span>scrambling</span></div>
+    <div class="kpi"><b class="num">${T.p3[1]?fmtPar(Math.round(T.p3[0]/T.p3[1]*100)/100):'–'}</b><span>par 3s</span></div>
+    <div class="kpi"><b class="num">${T.p4[1]?fmtPar(Math.round(T.p4[0]/T.p4[1]*100)/100):'–'}</b><span>par 4s</span></div>
+    <div class="kpi"><b class="num">${T.p5[1]?fmtPar(Math.round(T.p5[0]/T.p5[1]*100)/100):'–'}</b><span>par 5s</span></div>
+    <div class="kpi"><b class="num">${diffs.length?fx(diffs.reduce((a,b)=>a+b,0)/diffs.length):'–'}</b><span>avg differential</span></div>
+    <div class="kpi"><b class="num">${handicapIndex(diffs.slice().reverse())==null?'–':fx(handicapIndex(diffs.slice().reverse()))}</b><span>est. index${diffs.length?' ('+Math.min(20,diffs.length)+' rated)':''}</span></div>
+    <div class="kpi"><b class="num">${diffs.length?fx(Math.min(...diffs)):'–'}</b><span>best differential</span></div>
+  </div>
+  <h2>Score trend</h2><div class="card" style="padding:10px">${trendSvg(rs)}</div>
+  ${clubs.length?`<h2>By club <span class="sub" style="font-weight:400">shot-entry rounds only</span></h2><div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Shots</th><th>Good</th><th>L</th><th>R</th><th>Sh</th><th>Lg</th><th>Pen</th><th>Heel</th><th>Toe</th><th>Prox ft</th></tr>
+    ${clubs.map(k=>{const o=club[k];return `<tr><td><b>${esc(k)}</b></td><td>${o.n}</td><td>${pct(o.good,o.n)}</td><td>${o.left}</td><td>${o.right}</td><td>${o.short}</td><td>${o.long}</td><td>${o.pen||''}</td><td>${o.heel||''}</td><td>${o.toe||''}</td><td>${o.proxN?Math.round(o.proxSum/o.proxN):''}</td></tr>`}).join('')}</table></div>`:''}`;
+}
+function trendSvg(rs){
+  const pts=rs.slice(-20).map(r=>{const c=roundCalc(r);return {v:c.holes?c.toPar/c.holes*18:0,t:r.type,d:r.date}});
+  if(pts.length<2)return '<div class="sub" style="text-align:center;padding:14px">Trend shows after two rounds</div>';
+  const W=320,H=120,pl=28,pr=8,pt=8,pb=18;let mn=Math.min(0,...pts.map(p=>p.v)),mx=Math.max(4,...pts.map(p=>p.v));mn=Math.floor(mn/2)*2;mx=Math.ceil(mx/2)*2;
+  const x=i=>pl+i*(W-pl-pr)/(pts.length-1),y=v=>pt+(mx-v)/(mx-mn)*(H-pt-pb);
+  const grid=[];for(let g=mn;g<=mx;g+=2)grid.push(`<line x1="${pl}" x2="${W-pr}" y1="${y(g)}" y2="${y(g)}" stroke="#E4E7E2"/><text x="${pl-4}" y="${y(g)+4}" font-size="9" fill="#6B7770" text-anchor="end">${fmtPar(g)}</text>`);
+  const path=pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.v).toFixed(1)).join(' ');
+  const dots=pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.5" fill="${p.t==='Sim'?'#A8701A':'#2E7A45'}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}<path d="${path}" fill="none" stroke="#16241C" stroke-width="1.5"/>${dots}<text x="${pl}" y="${H-4}" font-size="9" fill="#6B7770">${pts[0].d}</text><text x="${W-pr}" y="${H-4}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].d}</text></svg>
+  <div class="sub" style="font-size:12px;margin-top:6px"><span class="dot ok"></span> real &nbsp; <span class="dot wait"></span> simulator &nbsp;· score to par, normalized to 18 holes</div>`;
+}
+
+/* ===================== COURSES ===================== */
+function vCourses(){
+  if(sub.edit)return vCourseEdit(sub.edit);
+  return `<div class="row between"><h1>Courses</h1><button class="btn small primary" onclick="go('courses',{edit:{id:uid(),name:'',holes:Array.from({length:18},(_,i)=>({par:4,yds:0})),isNew:true}})">Add course</button></div>
+  ${DB.courses.length?`<div class="card list" style="padding:0 14px">${DB.courses.map(c=>`<button class="item" onclick="go('courses',{edit:JSON.parse(JSON.stringify(DB.courses.find(x=>x.id==='${c.id}')))})"><div class="grow"><div style="font-weight:600">${esc(c.name)}</div><div class="sub">Par ${c.holes.reduce((a,h)=>a+h.par,0)} · ${c.holes.reduce((a,h)=>a+(h.yds||0),0)} yds${c.rating?' · '+c.rating+' / '+c.slope:''}</div></div><span class="sub">›</span></button>`).join('')}</div>`:`<div class="card empty">No courses yet. Add one so yardages fill in automatically.</div>`}`;
+}
+function vCourseEdit(c){
+  return `<button class="btn small" onclick="go('courses')">‹ Courses</button>
+  <h1 style="margin-top:12px">${c.isNew?'New course':'Edit course'}</h1>
+  <label class="f">Name (include tees, e.g. "Thanksgiving Point – Blue")</label><input class="in" value="${esc(c.name)}" oninput="sub.edit.name=this.value">
+  <div class="row"><div class="grow"><label class="f">Course rating (18)</label><input class="in" type="number" inputmode="decimal" step="0.1" placeholder="72.4" value="${c.rating??''}" onchange="sub.edit.rating=+this.value||null"></div><div class="grow"><label class="f">Slope (18)</label><input class="in" type="number" inputmode="numeric" placeholder="131" value="${c.slope??''}" onchange="sub.edit.slope=+this.value||null"></div></div>
+  <div class="card" style="margin-top:12px"><div class="holes-grid"><b>#</b><b>Par</b><b>Yards</b>
+    ${c.holes.map((h,i)=>`<span class="sub">${i+1}</span><input class="in" type="number" inputmode="numeric" value="${h.par}" onchange="sub.edit.holes[${i}].par=+this.value||4"><input class="in" type="number" inputmode="numeric" value="${h.yds||''}" onchange="sub.edit.holes[${i}].yds=+this.value||0">`).join('')}
+  </div></div>
+  <div class="stack"><button class="btn primary block" onclick="saveCourse()">Save course</button>
+  ${c.isNew?'':`<button class="btn danger block" onclick="if(confirm('Delete course?')){DB.courses=DB.courses.filter(x=>x.id!=='${c.id}');save();go('courses')}">Delete course</button>`}</div>`;
+}
+function saveCourse(){const c=sub.edit;if(!c.name.trim()){toast('Give the course a name');return}delete c.isNew;
+  const i=DB.courses.findIndex(x=>x.id===c.id);if(i>=0)DB.courses[i]=c;else DB.courses.push(c);save();go('courses')}
+
+/* ===================== SETTINGS ===================== */
+function vSettings(){const s=DB.settings;
+  return `<h1>Settings</h1>
+  <div class="card"><h2 style="margin-top:0">Google Sheets</h2>
+    <label class="f">Apps Script web app URL</label><input class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(s.sheetUrl)}" onchange="DB.settings.sheetUrl=this.value.trim();save()">
+    <p class="sub" style="margin:8px 0 0">Rounds push here when you tap Push, and automatically when you come back online.</p>
+    <button class="btn small block" style="margin-top:10px" onclick="testSheet()">Test connection</button>
+  </div>
+  <div class="card"><h2 style="margin-top:0">Clubs</h2>
+    <label class="f">Comma-separated, in bag order</label><input class="in" value="${esc(s.clubs.join(', '))}" onchange="DB.settings.clubs=this.value.split(',').map(x=>x.trim()).filter(Boolean);save();render()">
+  </div>
+  <div class="card"><h2 style="margin-top:0">Defaults for new rounds</h2>
+    <label class="f">Round type</label><div class="seg"><button class="${s.defaultType==='Real'?'on':''}" onclick="DB.settings.defaultType='Real';save();render()">Real</button><button class="${s.defaultType==='Sim'?'on':''}" onclick="DB.settings.defaultType='Sim';save();render()">Simulator</button></div>
+    <label class="f">Entry</label><div class="seg"><button class="${s.defaultMode==='shots'?'on':''}" onclick="DB.settings.defaultMode='shots';save();render()">Every shot</button><button class="${s.defaultMode==='quick'?'on':''}" onclick="DB.settings.defaultMode='quick';save();render()">Quick</button></div>
+  </div>
+  <div class="card"><h2 style="margin-top:0">Backup</h2>
+    <p class="sub" style="margin:0 0 10px">Everything lives on this phone. Export a backup now and then.</p>
+    <div class="stack"><button class="btn block" onclick="exportJSON()">Export backup file</button><button class="btn block" onclick="copyJSON()">Copy backup to clipboard</button>
+    <label class="btn block" style="cursor:pointer">Restore from file<input type="file" accept="application/json,.json" style="display:none" onchange="restoreFile(this.files[0])"></label>
+    <button class="btn block" onclick="restorePaste()">Restore from pasted text</button></div>
+  </div>
+  <div class="card"><h2 style="margin-top:0">Sample data</h2>
+    <p class="sub" style="margin:0 0 10px">Twenty made-up rounds so you can see the stats and the sheet. Remove them before you start logging for real.</p>
+    <div class="stack">${DB.rounds.some(r=>r.sample)?`<button class="btn block" onclick="removeSamples()">Remove sample rounds</button>`:`<button class="btn block" onclick="loadSamples()">Load 20 sample rounds</button>`}</div>
+  </div>
+  <p class="sub" style="text-align:center">Golf Log v2 · ${DB.rounds.length} rounds · ${DB.courses.length} courses</p>`;
+}
+async function testSheet(){const url=DB.settings.sheetUrl;if(!url)return toast('Paste the script URL first');
+  try{const r=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({ping:true})});const j=await r.json();toast(j.ok?'Connected ✓':'Script replied but not OK')}catch(e){toast('Could not reach script — check URL and deployment')}}
+function exportJSON(){const b=new Blob([JSON.stringify(DB)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`golflog-backup-${today()}.json`;document.body.appendChild(a);a.click();a.remove()}
+function copyJSON(){navigator.clipboard?.writeText(JSON.stringify(DB)).then(()=>toast('Backup copied'),()=>toast('Copy blocked — use export'))}
+function restoreFile(f){if(!f)return;const r=new FileReader();r.onload=()=>restoreText(r.result);r.readAsText(f)}
+function restorePaste(){const t=prompt('Paste backup text');if(t)restoreText(t)}
+function restoreText(t){try{const d=JSON.parse(t);if(!d.rounds)throw 0;if(!confirm(`Restore ${d.rounds.length} rounds and ${(d.courses||[]).length} courses? This replaces what's on the phone.`))return;DB={...DB,...d};save();toast('Restored');render()}catch(e){toast('That did not look like a backup')}}
+
+
+/* ===================== sample data ===================== */
+function loadSamples(){
+  let seed=20260915;const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296};
+  const pick=a=>a[Math.floor(rnd()*a.length)];const ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+  const courses=[
+    {id:'smp-tp',name:'Thanksgiving Point – Blue',rating:73.1,slope:130,pars:[4,5,4,3,4,4,3,5,4,4,3,5,4,4,3,4,5,4],yds:[412,548,398,178,430,388,162,532,410,395,190,560,402,371,205,441,527,433]},
+    {id:'smp-hc',name:'Hobble Creek – Blue',rating:70.9,slope:125,pars:[4,4,3,5,4,3,4,5,4,4,3,4,5,4,3,4,4,5],yds:[380,402,165,505,425,150,398,540,410,372,172,395,522,388,181,401,417,515]},
+    {id:'smp-pb',name:'Sim – Pebble Beach',rating:74.7,slope:144,pars:[4,5,4,4,3,5,3,4,4,4,4,3,4,5,4,4,3,5],yds:[381,502,390,331,195,513,106,428,481,446,390,202,404,580,397,403,178,543]},
+    {id:'smp-bd',name:'Sim – Bandon Dunes',rating:74.4,slope:145,pars:[4,3,4,4,4,3,4,4,4,4,4,3,5,4,3,4,4,5],yds:[381,193,398,410,462,161,393,431,432,407,393,205,533,371,143,412,380,532]}];
+  courses.forEach(c=>{if(!DB.courses.find(x=>x.id===c.id))DB.courses.push({id:c.id,name:c.name,rating:c.rating,slope:c.slope,holes:c.pars.map((p,i)=>({par:p,yds:c.yds[i]}))})});
+  const dates=[];let d=new Date(2026,5,14);for(let i=0;i<20;i++){dates.push(new Date(d));d.setDate(d.getDate()+ri(3,6))}
+  const plan=dates.map((dt,i)=>({dt,type:i%5===2||i%5===4?'Sim':'Real',mode:i===6||i===13||i===17?'quick':'shots'}));
+  plan.forEach((pl,idx)=>{
+    const c=pl.type==='Sim'?pick(courses.slice(2)):pick(courses.slice(0,2));const sim=pl.type==='Sim';
+    const skill=0.6+idx*0.006+(sim?0.05:0);
+    const holes=c.pars.map((par,i)=>{
+      const h={n:i+1,par,yds:c.yds[i],mode:pl.mode,shots:[],putts:0,score:0,fir:null,gir:null,pen:0};
+      const shot=(club,good,lie)=>{const r=rnd();let res;if(r<good)res='good';else if(r<good+0.03)res='pen';else res=pick(['left','left','right','right','short','long']);
+        const strike=rnd()<0.6?null:pick(['Center','Center','Heel','Heel','Heel','Toe','Thin','Fat']);h.shots.push({club,result:res,lie,strike,prox:null});return res};
+      let onGreen=false;
+      if(par>=4){let r=shot(par===5||rnd()<0.75?'Dr':'3W',skill,'Tee');if(r==='pen')r=shot('Dr',skill+0.15,'Tee');
+        let lie=r==='good'?'Fairway':'Rough';
+        if(par===5){let r2=shot(pick(['3W','Hy','4i']),skill-0.05,lie);if(r2==='pen')r2=shot('Hy',skill,lie);lie=r2==='good'?'Fairway':'Rough';
+          const a=shot(pick(['PW','50','54']),skill+0.15,lie);if(a==='good'){onGreen=true;h.shots[h.shots.length-1].prox=ri(6,45)}}
+        else{const a=shot(pick(['7i','8i','9i','PW','50']),skill+0.05,lie);if(a==='good'){onGreen=true;h.shots[h.shots.length-1].prox=ri(6,40)}}}
+      else{const a=shot(pick(['5i','6i','7i','8i']),skill+0.05,'Tee');if(a==='good'){onGreen=true;h.shots[h.shots.length-1].prox=ri(8,40)}}
+      let tries=0;while(!onGreen&&tries<3){tries++;const ch=shot(pick(['54','58','58']),0.85,pick(['Rough','Rough','Sand','Fringe']));if(ch==='good'){onGreen=true;h.shots[h.shots.length-1].prox=ri(2,15)}}
+      const prox=h.shots[h.shots.length-1].prox||20;const r=rnd();
+      h.putts=prox<=4?(r<0.95?1:2):prox<=12?(r<0.62?1:2):prox<=30?(r<0.15?1:r<0.95?2:3):(r<0.03?1:r<0.86?2:3);
+      if(pl.mode==='quick'){h.mode='shots';const x=holeCalc(h);h.mode='quick';h.score=x.score;h.pen=x.pen;h.fir=x.fir;h.gir=x.gir;h.shots=[]}
+      return h});
+    const r={id:'smp-'+idx,sample:true,date:pl.dt.getFullYear()+'-'+String(pl.dt.getMonth()+1).padStart(2,'0')+'-'+String(pl.dt.getDate()).padStart(2,'0'),courseId:c.id,courseName:c.name,type:pl.type,mode:pl.mode,rating:c.rating,slope:c.slope,holes,notes:idx===5?'Front nine OB x2, back nine clean':idx===11?'Best ball striking of the summer':'',pushed:false,createdAt:pl.dt.getTime()};
+    if(!DB.rounds.find(x=>x.id===r.id))DB.rounds.push(r);
+  });
+  save();toast('20 sample rounds loaded');render();
+}
+function removeSamples(){DB.rounds=DB.rounds.filter(r=>!r.sample);DB.courses=DB.courses.filter(c=>!String(c.id).startsWith('smp-'));save();toast('Sample rounds removed');render()}
+
+/* ===================== sheet (modal) ===================== */
+function openSheet(html){closeSheet();const d=document.createElement('div');d.className='sheet';d.id='sheet';d.innerHTML=`<div class="pane">${html}</div>`;d.addEventListener('click',e=>{if(e.target===d)closeSheet()});document.body.appendChild(d)}
+function closeSheet(){document.getElementById('sheet')?.remove()}
+
+/* ===================== boot ===================== */
+load();render();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script>
+</body>
+</html>
