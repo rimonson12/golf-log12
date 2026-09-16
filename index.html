@@ -498,7 +498,12 @@ function vSettings(){const s=DB.settings;
   <p class="sub" style="text-align:center">Golf Log v2 · ${DB.rounds.length} rounds · ${DB.courses.length} courses</p>`;
 }
 async function testSheet(){const url=DB.settings.sheetUrl;if(!url)return toast('Paste the script URL first');
-  try{const r=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({ping:true})});const j=await r.json();toast(j.ok?'Connected ✓':'Script replied but not OK')}catch(e){toast('Could not reach script — check URL and deployment')}}
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url))return toast('URL should start with https://script.google.com/macros/s/ and end with /exec');
+  let r,j;
+  try{r=await fetch(url+'?ping=1',{method:'GET',redirect:'follow'})}catch(e){return toast('GET failed: '+(e.message||e))}
+  try{j=await r.json()}catch(e){return toast('Script replied but not JSON (status '+r.status+') — access is probably not "Anyone"')}
+  if(!j.ok)return toast('Script error: '+(j.error||'not ok'));
+  try{r=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({ping:true})});j=await r.json();toast(j.ok?'Connected ✓ (GET and POST both work)':'POST replied but not OK')}catch(e){toast('GET works, POST failed: '+(e.message||e))}}
 function exportJSON(){const b=new Blob([JSON.stringify(DB)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`golflog-backup-${today()}.json`;document.body.appendChild(a);a.click();a.remove()}
 function copyJSON(){navigator.clipboard?.writeText(JSON.stringify(DB)).then(()=>toast('Backup copied'),()=>toast('Copy blocked — use export'))}
 function restoreFile(f){if(!f)return;const r=new FileReader();r.onload=()=>restoreText(r.result);r.readAsText(f)}
