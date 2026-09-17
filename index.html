@@ -58,7 +58,7 @@ textarea.in{min-height:80px;padding:10px 12px}
 .empty{padding:30px 16px;text-align:center;color:var(--mute)}
 /* tab bar */
 #tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(247,247,244,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab);z-index:5}
-#tabs button{flex:1;min-height:60px;font-size:12px;font-weight:600;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+#tabs button{flex:1;min-height:60px;font-size:11px;font-weight:600;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
 #tabs button.on{color:var(--green)}
 #tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 /* hole screen */
@@ -144,15 +144,16 @@ const DEF_CLUBS=['Dr','3W','Hy','4i','5i','6i','7i','8i','9i','PW','50','54','58
 const RESULTS={good:'Good',left:'Left',right:'Right',short:'Short',long:'Long',pen:'Penalty'};
 const LIES=['Tee','Fairway','Rough','Sand','Fringe','Recovery'];
 const STRIKES=['Center','Heel','Toe','Thin','Fat'];
-let DB={rounds:[],courses:[],active:null,settings:{clubs:DEF_CLUBS.slice(),sheetUrl:'',defaultMode:'shots',defaultType:'Real'}};
+let DB={rounds:[],courses:[],players:[],games:[],active:null,activeGame:null,settings:{clubs:DEF_CLUBS.slice(),sheetUrl:'',defaultMode:'shots',defaultType:'Real'}};
 function load(){try{const s=localStorage.getItem(K);if(s){const d=JSON.parse(s);DB={...DB,...d,settings:{...DB.settings,...(d.settings||{})}}}}catch(e){}
-  DB.courses=(DB.courses||[]).map(migrateCourse)}
+  DB.courses=(DB.courses||[]).map(migrateCourse);DB.players=DB.players||[];DB.games=DB.games||[]}
 /* old shape: {name, rating, slope, holes:[{par,yds}]}  →  new: {name, pars:[18], tees:[{id,name,rating,slope,yds:[18]}]} */
 function migrateCourse(c){if(c.tees)return c;
   const m=/^(.*?)\s+[–-]\s+(.+)$/.exec(c.name||'');const name=m?m[1]:c.name,tee=m?m[2]:'Default';
   const holes=c.holes||Array.from({length:18},()=>({par:4,yds:0}));
-  return {id:c.id,name,pars:holes.map(h=>h.par||4),tees:[{id:uid(),name:tee,rating:c.rating||null,slope:c.slope||null,yds:holes.map(h=>h.yds||0)}]}}
+  return {id:c.id,name,pars:holes.map(h=>h.par||4),si:holes.map((h,i)=>h.si||i+1),tees:[{id:uid(),name:tee,rating:c.rating||null,slope:c.slope||null,yds:holes.map(h=>h.yds||0)}]}}
 function coursePar(c){return (c.pars||[]).reduce((a,b)=>a+b,0)}
+function courseSI(c){return (c&&c.si&&c.si.length===18)?c.si:Array.from({length:18},(_,i)=>i+1)}
 function teeYds(t){return (t.yds||[]).reduce((a,b)=>a+(b||0),0)}
 function save(){try{localStorage.setItem(K,JSON.stringify(DB))}catch(e){toast('Could not save — storage full?')}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -220,12 +221,13 @@ const ICONS={
   rounds:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
   stats:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
   courses:'<svg viewBox="0 0 24 24"><path d="M12 22s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  games:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg>',
   settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'};
 function go(v,s={}){view=v;sub=s;render();window.scrollTo(0,0)}
 function render(){
-  document.getElementById('tabs').innerHTML=['play','rounds','stats','courses','settings'].map(v=>`<button class="${view===v?'on':''}" onclick="go('${v}')">${ICONS[v]}<span>${v[0].toUpperCase()+v.slice(1)}</span></button>`).join('');
+  document.getElementById('tabs').innerHTML=['play','rounds','games','stats','courses','settings'].map(v=>`<button class="${view===v?'on':''}" onclick="go('${v}')">${ICONS[v]}<span>${v[0].toUpperCase()+v.slice(1)}</span></button>`).join('');
   const app=document.getElementById('app');
-  app.innerHTML=({play:vPlay,rounds:vRounds,stats:vStats,courses:vCourses,settings:vSettings})[view]();
+  app.innerHTML=({play:vPlay,rounds:vRounds,games:vGames,stats:vStats,courses:vCourses,settings:vSettings})[view]();
 }
 
 /* ===================== PLAY ===================== */
@@ -480,7 +482,7 @@ function trendSvg(rs){
 }
 
 /* ===================== COURSES ===================== */
-function blankCourse(){return {id:uid(),name:'',pars:Array(18).fill(4),tees:[{id:uid(),name:'White',rating:null,slope:null,yds:Array(18).fill(0)}],isNew:true}}
+function blankCourse(){return {id:uid(),name:'',pars:Array(18).fill(4),si:Array.from({length:18},(_,i)=>i+1),tees:[{id:uid(),name:'White',rating:null,slope:null,yds:Array(18).fill(0)}],isNew:true}}
 function vCourses(){
   if(sub.edit)return vCourseEdit(sub.edit);
   return `<div class="row between"><h1>Courses</h1><button class="btn small primary" onclick="go('courses',{edit:blankCourse(),tab:'par'})">Add course</button></div>
@@ -495,9 +497,9 @@ function vCourseEdit(c){
   <label class="f">Editing</label>
   <div class="seg" style="flex-wrap:wrap"><button class="${tab==='par'?'on':''}" onclick="sub.tab='par';render()">Par</button>${c.tees.map((x,i)=>`<button class="${tab===i?'on':''}" onclick="sub.tab=${i};render()">${esc(x.name||'Tee '+(i+1))}</button>`).join('')}<button onclick="addTee()">+ Tee</button></div>
   ${t?`<div class="row" style="margin-top:8px"><div class="grow"><label class="f">Tee name</label><input class="in" value="${esc(t.name)}" oninput="sub.edit.tees[${tab}].name=this.value"></div><div style="width:84px"><label class="f">Rating</label><input class="in" type="number" inputmode="decimal" step="0.1" placeholder="72.4" value="${t.rating??''}" onchange="sub.edit.tees[${tab}].rating=+this.value||null"></div><div style="width:72px"><label class="f">Slope</label><input class="in" type="number" inputmode="numeric" placeholder="131" value="${t.slope??''}" onchange="sub.edit.tees[${tab}].slope=+this.value||null"></div></div>`:''}
-  <div class="card" style="margin-top:12px"><div class="holes-grid" style="grid-template-columns:34px 1fr 1fr"><b>#</b><b>Par</b><b>${t?'Yards':'Total: '+coursePar(c)}</b>
-    ${c.pars.map((par,i)=>`<span class="sub">${i+1}</span>${t?`<span class="num" style="text-align:center">${par}</span><input class="in" type="number" inputmode="numeric" value="${t.yds[i]||''}" onchange="sub.edit.tees[${tab}].yds[${i}]=+this.value||0">`:`<input class="in" type="number" inputmode="numeric" value="${par}" onchange="sub.edit.pars[${i}]=+this.value||4"><span></span>`}`).join('')}
-  </div>${t?`<p class="sub" style="margin:10px 0 0;text-align:right">${teeYds(t)} yds</p>`:''}</div>
+  <div class="card" style="margin-top:12px"><div class="holes-grid" style="grid-template-columns:34px 1fr 1fr"><b>#</b><b>Par</b><b>${t?'Yards':'Hcp index'}</b>
+    ${c.pars.map((par,i)=>`<span class="sub">${i+1}</span>${t?`<span class="num" style="text-align:center">${par}</span><input class="in" type="number" inputmode="numeric" value="${t.yds[i]||''}" onchange="sub.edit.tees[${tab}].yds[${i}]=+this.value||0">`:`<input class="in" type="number" inputmode="numeric" value="${par}" onchange="sub.edit.pars[${i}]=+this.value||4"><input class="in" type="number" inputmode="numeric" value="${courseSI(c)[i]}" onchange="sub.edit.si=courseSI(sub.edit);sub.edit.si[${i}]=+this.value||${i+1}">`}`).join('')}
+  </div>${t?`<p class="sub" style="margin:10px 0 0;text-align:right">${teeYds(t)} yds</p>`:`<p class="sub" style="margin:10px 0 0">Par ${coursePar(c)} · the hcp index (1–18, hardest to easiest) is the stroke index from the scorecard; net games use it to allocate strokes.</p>`}</div>
   <div class="stack"><button class="btn primary block" onclick="saveCourse()">Save course</button>
   ${t&&c.tees.length>1?`<button class="btn block" onclick="if(confirm('Remove the ${esc(t.name)} tees?')){sub.edit.tees.splice(${tab},1);sub.tab='par';render()}">Remove ${esc(t.name)} tees</button>`:''}
   ${c.isNew?'':`<button class="btn danger block" onclick="if(confirm('Delete course?')){DB.courses=DB.courses.filter(x=>x.id!=='${c.id}');save();go('courses')}">Delete course</button>`}</div>`;
@@ -508,12 +510,12 @@ function saveCourse(){const c=sub.edit;if(!c.name.trim()){toast('Give the course
 
 /* ----- course import: scorecard photo (needs an Anthropic API key in Settings) or pasted JSON ----- */
 const COURSE_PROMPT=`Read this golf scorecard and return ONLY a JSON object, no prose, no markdown fences, in exactly this shape:
-{"name":"Course name","pars":[18 integers, hole 1 to 18],"tees":[{"name":"Blue","rating":72.4,"slope":131,"yards":[18 integers]}]}
+{"name":"Course name","pars":[18 integers, hole 1 to 18],"si":[18 integers, the handicap/stroke index of each hole, 1=hardest],"tees":[{"name":"Blue","rating":72.4,"slope":131,"yards":[18 integers]}]}
 Include every tee set printed on the card. Use the men's/course rating and slope for each tee if printed; otherwise use null. If only 9 holes are printed, return 9 pars and 9 yards.`;
 function applyCourseJSON(txt){let j;try{j=JSON.parse(String(txt).replace(/```json|```/g,'').trim())}catch(e){toast('That was not valid course JSON');return false}
   if(!j||!Array.isArray(j.pars)){toast('Missing "pars" in the data');return false}
   const n=j.pars.length;const pad=a=>{a=(a||[]).map(x=>+x||0);while(a.length<18)a.push(0);return a.slice(0,18)};
-  const c=sub.edit;c.name=j.name||c.name;c.pars=pad(j.pars).map(x=>x||4);
+  const c=sub.edit;c.name=j.name||c.name;c.pars=pad(j.pars).map(x=>x||4);if(Array.isArray(j.si))c.si=pad(j.si).map((x,i)=>x||i+1);
   if(Array.isArray(j.tees)&&j.tees.length)c.tees=j.tees.map(t=>({id:uid(),name:t.name||'Tee',rating:t.rating?+t.rating:null,slope:t.slope?+t.slope:null,yds:pad(t.yards||t.yds)}));
   sub.tab='par';render();toast(n<18?'Only '+n+' holes read — fill in the rest':'Check the numbers, then save');return true}
 function pasteCourse(){openSheet(`<h2 style="margin-top:0">Paste course data</h2>
@@ -530,6 +532,340 @@ async function scanScorecard(file){if(!file)return;const key=DB.settings.apiKey;
     const j=await r.json();if(j.error)throw new Error(j.error.message||'API error');
     applyCourseJSON((j.content||[]).filter(x=>x.type==='text').map(x=>x.text).join(''))}
   catch(e){toast('Scan failed: '+(e.message||e))}}
+
+/* ===================== GAMES ===================== */
+const GAMES={
+  skins:{name:'Skins',min:2,max:8,teams:false,wagerLabel:'Per skin, per player',blurb:'Low score wins the hole; ties carry.'},
+  nassau:{name:'Nassau',min:2,max:4,teams:true,sides:2,wagerLabel:'Per segment',blurb:'Three matches: front, back, total.'},
+  wolf:{name:'Wolf',min:4,max:4,teams:false,wagerLabel:'Per point',blurb:'Wolf rotates and picks a partner, or goes alone.'},
+  stableford:{name:'Stableford',min:1,max:8,teams:false,wagerLabel:'Per point',blurb:'Points by score vs par; high total wins.'},
+  vegas:{name:'Vegas',min:4,max:4,teams:true,sides:2,size:2,wagerLabel:'Per point',blurb:'Two-digit team numbers; the flip rule bites.'},
+  bestball:{name:'Best Ball',min:4,max:8,teams:true,sides:2,wagerLabel:'Per match',blurb:'Team score is the best ball on each hole.'},
+  scramble:{name:'Scramble',min:4,max:8,teams:true,sides:2,wagerLabel:'Per match',blurb:'One score per team per hole.'}
+};
+const STAB=[[-3,5],[-2,4],[-1,3],[0,2],[1,1]];           // standard
+const STAB_MOD=[[-3,8],[-2,5],[-1,2],[0,0],[1,-1]];      // modified
+function stabPts(toPar,mod){const t=mod?STAB_MOD:STAB;for(const [d,p] of t)if(toPar<=d)return p;return mod?-3:0}
+function playerName(id){const p=DB.players.find(x=>x.id===id);return p?p.name:'?'}
+function courseHcp(idx,tee,par){if(idx==null)return 0;
+  return (tee&&tee.rating&&tee.slope)?Math.round(idx*tee.slope/113+(tee.rating-par)):Math.round(idx)}
+/* strokes each player gets on each hole, played off the low course handicap */
+function strokeTable(g){
+  const c=DB.courses.find(x=>x.id===g.courseId);const tee=c?(c.tees.find(t=>t.id===g.teeId)||c.tees[0]):null;
+  const si=courseSI(c),par=c?coursePar(c):72;
+  const chs={};g.playerIds.forEach(id=>{const p=DB.players.find(x=>x.id===id);chs[id]=courseHcp(p?p.index:null,tee,par)});
+  const low=Math.min(...Object.values(chs));const out={};
+  g.playerIds.forEach(id=>{let given=Math.max(0,chs[id]-low);if(g.holes.length<=9)given=Math.round(given/2);
+    out[id]={ch:chs[id],given,per:g.holes.map(h=>{const s=si[h.n-1]||h.n;return Math.floor(given/18)+((given%18)>=s?1:0)})}});
+  return out;
+}
+function gScore(g,hi,pid,st){const raw=g.holes[hi].scores[pid];if(raw==null||raw<=0)return null;
+  return g.net?raw-(st[pid]?st[pid].per[hi]:0):raw}
+function holeDone(g,hi){const h=g.holes[hi];return g.type==='scramble'?g.sides.some((s,i)=>h.team&&h.team[i]>0):g.playerIds.every(p=>h.scores[p]>0)}
+function sideScore(g,hi,si_,st){const h=g.holes[hi];
+  if(g.type==='scramble')return h.team&&h.team[si_]>0?h.team[si_]:null;
+  const vals=g.sides[si_].map(p=>gScore(g,hi,p,st)).filter(v=>v!=null);return vals.length?Math.min(...vals):null}
+
+/* ---- the engine: returns per-hole detail, points and money per player ---- */
+function playGame(g){
+  const st=strokeTable(g),n=g.playerIds.length,money={},pts={},lines=[];
+  g.playerIds.forEach(p=>{money[p]=0;pts[p]=0});
+  const done=g.holes.map((h,i)=>holeDone(g,i));
+  const detail=g.holes.map(()=>({}));
+  const pv=(a,b)=>{money[a]+=b};
+
+  if(g.type==='skins'){let carry=0;
+    g.holes.forEach((h,i)=>{if(!done[i]){detail[i]={text:''};return}
+      const sc={};g.playerIds.forEach(p=>sc[p]=gScore(g,i,p,st));
+      const lo=Math.min(...Object.values(sc));const win=g.playerIds.filter(p=>sc[p]===lo);
+      let value=carry+1;
+      if(win.length!==1){carry=value;detail[i]={text:`tied — ${value} on the next hole`};return}
+      const w=win[0];
+      if(g.validate&&lo>h.par){carry=value;detail[i]={text:`${playerName(w)} low but over par — not validated, ${value} carries`};return}
+      let mult=1;if(g.multiplier){const gross=g.holes[i].scores[w]-h.par;if(gross<=-2)mult=3;else if(gross===-1)mult=2}
+      const paid=value*mult;carry=0;pts[w]+=paid;
+      g.playerIds.forEach(p=>{if(p!==w)pv(p,-g.wager*paid)});pv(w,g.wager*paid*(n-1));
+      detail[i]={win:w,text:`${playerName(w)} wins ${paid} skin${paid>1?'s':''}${mult>1?' (×'+mult+')':''}`}});
+    if(carry)lines.push(`${carry} skin${carry>1?'s':''} left on the table`);
+  }
+
+  else if(g.type==='stableford'){
+    g.holes.forEach((h,i)=>{if(!done[i])return;const d={};
+      g.playerIds.forEach(p=>{const v=gScore(g,i,p,st);if(v==null)return;const q=stabPts(v-h.par,g.modified);pts[p]+=q;d[p]=q});
+      detail[i]={pp:d,text:g.playerIds.map(p=>playerName(p).split(' ')[0]+' '+(d[p]>=0?'+':'')+d[p]).join(' · ')}});
+    const avg=Object.values(pts).reduce((a,b)=>a+b,0)/n;
+    g.playerIds.forEach(p=>money[p]=+( (pts[p]-avg)*g.wager ).toFixed(2));
+  }
+
+  else if(g.type==='wolf'){
+    g.holes.forEach((h,i)=>{if(!done[i])return;const w=g.playerIds[(h.n-1)%4];const pick=h.wolf&&h.wolf.partner;
+      const lone=!pick||pick==='lone';
+      const team=lone?[w]:[w,pick],opp=g.playerIds.filter(p=>!team.includes(p));
+      const best=a=>Math.min(...a.map(p=>gScore(g,i,p,st)).filter(v=>v!=null));
+      const tb=best(team),ob=best(opp);if(!isFinite(tb)||!isFinite(ob))return;
+      let txt;
+      if(tb===ob)txt='Halved';
+      else{const wolfWon=tb<ob;
+        if(lone){const sign=wolfWon?1:-1;pts[w]+=sign*2*opp.length;opp.forEach(p=>pts[p]-=sign*2);
+          txt=wolfWon?`Lone wolf wins 2 from each`:`Lone wolf loses 2 to each`}
+        else{const win=wolfWon?team:opp,lose=wolfWon?opp:team;win.forEach(p=>pts[p]+=1);lose.forEach(p=>pts[p]-=1);
+          txt=wolfWon?'Wolf side wins':'Opponents win'}}
+      detail[i]={wolf:w,lone,text:`${playerName(w).split(' ')[0]} is wolf${lone?' (alone)':' with '+playerName(pick).split(' ')[0]} — ${txt}`}});
+    g.playerIds.forEach(p=>money[p]=+(pts[p]*g.wager).toFixed(2));
+  }
+
+  else if(g.type==='vegas'){
+    let net=0;
+    g.holes.forEach((h,i)=>{if(!done[i])return;
+      const num=(side,flip)=>{let a=g.sides[side].map(p=>gScore(g,i,p,st)).sort((x,y)=>x-y);
+        let s=a.map(v=>Math.min(v,9)).join('');if(flip)s=s.split('').reverse().join('');return +s};
+      const birdieFlip=side=>{const ps=g.sides[side];return ps.some(p=>{const gross=g.holes[i].scores[p];if(gross==null||gross-h.par>-1)return false;
+        return ps.some(q=>q!==p&&g.holes[i].scores[q]>gross)})};
+      const A=num(0,g.flip&&birdieFlip(1)),B=num(1,g.flip&&birdieFlip(0));
+      const diff=Math.abs(A-B);if(!diff){detail[i]={text:`${A} vs ${B} — push`};return}
+      const win=A<B?0:1;net+=win===0?diff:-diff;
+      g.sides[win].forEach(p=>pts[p]+=diff);g.sides[1-win].forEach(p=>pts[p]-=diff);
+      detail[i]={text:`${A} vs ${B} — side ${win+1} +${diff}`}});
+    g.sides.forEach((side,i)=>side.forEach(p=>money[p]=+(((i===0?net:-net))*g.wager).toFixed(2)));
+  }
+
+  else{ // nassau / bestball / scramble — match play
+    const segs=g.type==='nassau'?[[0,8,'Front'],[9,17,'Back'],[0,17,'Total']]:[[0,g.holes.length-1,'Match']];
+    const res=[];
+    segs.forEach(([a,b,label])=>{if(g.holes.length<18&&label!=='Total'&&label!=='Match'&&a>=g.holes.length)return;
+      let up=0,played=0;
+      for(let i=a;i<=Math.min(b,g.holes.length-1);i++){if(!done[i])continue;played++;
+        const x=sideScore(g,i,0,st),y=sideScore(g,i,1,st);if(x==null||y==null)continue;
+        if(x<y)up++;else if(y<x)up--}
+      res.push({label,up,played})});
+    (g.presses||[]).forEach(pr=>{let up=0;for(let i=pr.from-1;i<=Math.min(pr.to-1,g.holes.length-1);i++){if(!done[i])continue;
+      const x=sideScore(g,i,0,st),y=sideScore(g,i,1,st);if(x==null||y==null)continue;if(x<y)up++;else if(y<x)up--}
+      res.push({label:`Press h${pr.from}–${pr.to}`,up,played:1,press:true})});
+    res.forEach(r=>{if(!r.played||!r.up)return;const win=r.up>0?0:1;
+      g.sides[win].forEach(p=>pv(p,g.wager*g.sides[1-win].length));
+      g.sides[1-win].forEach(p=>pv(p,-g.wager*g.sides[win].length))});
+    g.holes.forEach((h,i)=>{if(!done[i])return;const x=sideScore(g,i,0,st),y=sideScore(g,i,1,st);
+      detail[i]={text:x==null||y==null?'':`${x} vs ${y} — ${x<y?'side 1':y<x?'side 2':'halved'}`}});
+    lines.push(...res.filter(r=>r.played).map(r=>`${r.label}: ${r.up===0?'all square':(Math.abs(r.up)+' up '+(r.up>0?'side 1':'side 2'))}`));
+    detail.segs=res;
+  }
+  return {st,money,pts,detail,lines,done};
+}
+
+/* ---- views ---- */
+function vGames(){
+  if(DB.activeGame)return vGamePlay();
+  if(sub.gopen){const g=DB.games.find(x=>x.id===sub.gopen);if(g)return vGameCard(g,true)}
+  if(sub.newgame)return vGameNew();
+  if(sub.roster)return vRoster();
+  if(sub.rules||sub.rule)return vRules();
+  const gs=[...DB.games].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+  return `<div class="row between"><h1>Games</h1><div class="row" style="gap:6px"><button class="btn small" onclick="sub.rules=1;render()">Rules</button><button class="btn small" onclick="sub.roster=1;render()">Players</button></div></div>
+  <button class="btn primary block" style="min-height:52px;margin-bottom:14px" onclick="newGame()">New game</button>
+  ${gs.length?`<div class="card list" style="padding:0 14px">${gs.map(g=>{const r=playGame(g);const me=g.playerIds[0];return `<button class="item" onclick="go('games',{gopen:'${g.id}'})">
+    <div class="grow"><div style="font-weight:600">${GAMES[g.type].name}${g.net?' · net':''}</div><div class="sub">${g.date} · ${esc(g.courseName)} · ${g.playerIds.length} players</div></div>
+    <b class="num" style="color:${r.money[me]>0?'var(--green)':r.money[me]<0?'var(--red)':'var(--mute)'}">${money(r.money[me])}</b></button>`}).join('')}</div>`
+  :`<div class="card empty">No games yet. Start one and the app keeps score and the money.</div>`}`;
+}
+function money(v){v=+(v||0);return (v<0?'-$':'$')+Math.abs(v).toFixed(2).replace(/\.00$/,'')}
+function newGame(){const r=DB.active;
+  sub.newgame={type:'skins',wager:5,net:true,playerIds:DB.players.slice(0,4).map(p=>p.id),
+    courseId:r?.courseId||DB.courses[0]?.id||'',teeId:r?.teeId||'',date:r?.date||today(),span:r?(r.holes.length===18?'18':'F9'):'18',
+    validate:false,multiplier:false,modified:false,flip:true};render()}
+function vGameNew(){const f=sub.newgame,G=GAMES[f.type],cs=DB.courses;
+  const sel=f.playerIds;
+  return `<button class="btn small" onclick="sub.newgame=null;render()">‹ Games</button>
+  <h1 style="margin-top:12px">New game</h1>
+  <label class="f">Game</label>
+  <div class="chips">${Object.entries(GAMES).map(([k,v])=>`<button class="${f.type===k?'on':''}" onclick="sub.newgame.type='${k}';render()">${v.name}</button>`).join('')}</div>
+  <p class="sub" style="margin:8px 0 0">${G.blurb} · ${G.min===G.max?G.min+' players':G.min+'–'+G.max+' players'} · <a href="#" style="color:var(--green)" onclick="event.preventDefault();sub.newgame=null;sub.rule='${f.type}';render()">read the rules</a></p>
+  <label class="f">Players ${sel.length?`<span class="num">(${sel.length})</span>`:''}</label>
+  <div class="card list" style="padding:0 14px">${DB.players.length?DB.players.map(p=>`<button class="item" onclick="togglePlayer('${p.id}')"><span class="dot ${sel.includes(p.id)?'ok':''}" style="${sel.includes(p.id)?'':'background:#e3e6e1'}"></span><div class="grow"><div style="font-weight:600">${esc(p.name)}${sel[0]===p.id?' <span class="badge gray">you</span>':''}</div><div class="sub">${p.index==null?'no index':'index '+p.index}</div></div>${sel.includes(p.id)?`<span class="num sub">${sel.indexOf(p.id)+1}</span>`:''}</button>`).join(''):`<div class="empty" style="padding:14px">No players yet</div>`}</div>
+  <button class="btn small block" onclick="editPlayer()">+ Add player</button>
+  ${G.teams?`<label class="f">Teams</label><div class="card" style="padding:10px 14px">${sel.map((p,i)=>`<div class="row between" style="padding:6px 0"><span>${esc(playerName(p))}</span><div class="seg" style="width:150px"><button class="${teamOf(i)===0?'on':''}" onclick="setTeam(${i},0)">Side 1</button><button class="${teamOf(i)===1?'on':''}" onclick="setTeam(${i},1)">Side 2</button></div></div>`).join('')}</div>`:''}
+  <label class="f">${G.wagerLabel}</label>
+  <div class="chips">${[1,2,5,10,20].map(v=>`<button class="${f.wager===v?'on':''}" onclick="sub.newgame.wager=${v};render()">$${v}</button>`).join('')}<input class="in" style="width:90px;min-height:40px" type="number" inputmode="decimal" value="${f.wager}" onchange="sub.newgame.wager=+this.value||0">
+  </div>
+  <label class="f">Strokes</label>
+  <div class="seg"><button class="${f.net?'on':''}" onclick="sub.newgame.net=true;render()">Net</button><button class="${f.net?'':'on'}" onclick="sub.newgame.net=false;render()">Gross</button></div>
+  ${f.net?`<p class="sub" style="margin:6px 0 0">Strokes come off the low handicap, allocated by the course's hcp index.</p>`:''}
+  ${f.type==='skins'?`<label class="f">Skins options</label><div class="chips"><button class="${f.validate?'on':''}" onclick="sub.newgame.validate=!sub.newgame.validate;render()">Par or better to win</button><button class="${f.multiplier?'on':''}" onclick="sub.newgame.multiplier=!sub.newgame.multiplier;render()">Birdie ×2, eagle ×3</button></div>`:''}
+  ${f.type==='stableford'?`<label class="f">Scale</label><div class="seg"><button class="${f.modified?'':'on'}" onclick="sub.newgame.modified=false;render()">Standard</button><button class="${f.modified?'on':''}" onclick="sub.newgame.modified=true;render()">Modified</button></div>`:''}
+  ${f.type==='vegas'?`<label class="f">Flip rule</label><div class="seg"><button class="${f.flip?'on':''}" onclick="sub.newgame.flip=true;render()">On</button><button class="${f.flip?'':'on'}" onclick="sub.newgame.flip=false;render()">Off</button></div>`:''}
+  <label class="f">Course</label>
+  <select class="in" onchange="sub.newgame.courseId=this.value;sub.newgame.teeId='';render()">${cs.map(c=>`<option value="${c.id}" ${c.id===f.courseId?'selected':''}>${esc(c.name)}</option>`).join('')||'<option value="">No courses</option>'}</select>
+  ${(()=>{const c=cs.find(x=>x.id===f.courseId);if(!c||c.tees.length<2)return '';if(!f.teeId)f.teeId=c.tees[0].id;
+    return `<label class="f">Tees</label><div class="seg">${c.tees.map(t=>`<button class="${t.id===f.teeId?'on':''}" onclick="sub.newgame.teeId='${t.id}';render()">${esc(t.name)}</button>`).join('')}</div>`})()}
+  <label class="f">Holes</label>
+  <div class="seg"><button class="${f.span==='18'?'on':''}" onclick="sub.newgame.span='18';render()">18</button><button class="${f.span==='F9'?'on':''}" onclick="sub.newgame.span='F9';render()">Front 9</button><button class="${f.span==='B9'?'on':''}" onclick="sub.newgame.span='B9';render()">Back 9</button></div>
+  <button class="btn primary block" style="margin-top:16px;min-height:52px" onclick="startGame()">Start game</button>
+  ${DB.active?`<p class="sub" style="text-align:center;margin-top:10px">Your scores come across from the round in progress.</p>`:''}`;
+}
+function teamOf(i){const f=sub.newgame;const G=GAMES[f.type];const half=G.size||Math.ceil(f.playerIds.length/2);
+  f.teams=f.teams||f.playerIds.map((_,j)=>j<half?0:1);return f.teams[i]}
+function setTeam(i,v){const f=sub.newgame;teamOf(i);f.teams[i]=v;render()}
+function togglePlayer(id){const f=sub.newgame,i=f.playerIds.indexOf(id);
+  if(i>=0)f.playerIds.splice(i,1);else f.playerIds.push(id);f.teams=null;render()}
+function startGame(){const f=sub.newgame,G=GAMES[f.type];
+  if(f.playerIds.length<G.min||f.playerIds.length>G.max)return toast(`${G.name} needs ${G.min===G.max?G.min:G.min+'–'+G.max} players`);
+  const c=DB.courses.find(x=>x.id===f.courseId);const tee=c?(c.tees.find(t=>t.id===f.teeId)||c.tees[0]):null;
+  const start=f.span==='B9'?10:1,count=f.span==='18'?18:9;
+  const holes=[];for(let i=0;i<count;i++){const n=start+i;holes.push({n,par:c?(c.pars[n-1]||4):4,scores:{},team:[0,0],wolf:null})}
+  f.playerIds.forEach(()=>{});
+  const g={id:uid(),createdAt:Date.now(),date:f.date,type:f.type,wager:+f.wager||0,net:f.net,playerIds:f.playerIds.slice(),
+    courseId:c?.id||'',teeId:tee?.id||'',courseName:c?c.name:'No course',holes,cur:0,presses:[],
+    validate:f.validate,multiplier:f.multiplier,modified:f.modified,flip:f.flip,roundId:DB.active?.id||null};
+  if(GAMES[f.type].teams){g.sides=[[],[]];f.playerIds.forEach((p,i)=>g.sides[teamOf(i)].push(p))}
+  DB.games.unshift(g);DB.activeGame=g.id;sub={};save();render();
+}
+function activeGame(){return DB.games.find(x=>x.id===DB.activeGame)}
+function syncMyScore(g,hi){ // pull my score for this hole from the round in progress
+  if(!g.roundId||!DB.active||DB.active.id!==g.roundId)return;
+  const rh=DB.active.holes.find(h=>h.n===g.holes[hi].n);if(!rh)return;const c=holeCalc(rh);
+  if(c.logged&&g.playerIds.length)g.holes[hi].scores[g.playerIds[0]]=c.score;
+}
+function vGamePlay(){const g=activeGame();if(!g){DB.activeGame=null;return vGames()}
+  const hi=g.cur,h=g.holes[hi],G=GAMES[g.type];syncMyScore(g,hi);
+  const r=playGame(g),st=r.st;
+  const stepper=(pid)=>{const v=h.scores[pid]||0;const s=st[pid]?st[pid].per[hi]:0;
+    return `<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><span style="font-weight:600">${esc(playerName(pid))}</span>${g.net&&s?`<span class="sub"> · ${s} stroke${s>1?'s':''}</span>`:''}${v&&g.net?`<span class="sub"> · net ${v-s}</span>`:''}</div>
+    <div class="ctl" style="display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden"><button style="width:46px;height:42px;font-size:22px" onclick="setGScore('${pid}',-1)">−</button><b class="num" style="width:40px;text-align:center;line-height:42px;${v?'':'color:var(--mute)'}">${v||h.par}</b><button style="width:46px;height:42px;font-size:22px" onclick="setGScore('${pid}',1)">+</button></div></div>`};
+  return `<div class="row between" style="margin-bottom:6px"><div class="sub">${G.name}${g.net?' · net':''} · ${money(g.wager)} ${G.wagerLabel.toLowerCase()}</div><div class="row" style="gap:6px"><button class="btn small" onclick="openSheet(rulesSheet('${g.type}'))">Rules</button><button class="btn small" onclick="finishGame()">Finish</button></div></div>
+  <div class="holehead"><div><div class="hn num">${h.n}</div><div class="meta">Par ${h.par}${g.net?' · SI '+(courseSI(DB.courses.find(c=>c.id===g.courseId))[h.n-1]||h.n):''}</div></div>
+    <div class="score"><b class="num" style="font-size:26px">${money(r.money[g.playerIds[0]])}</b><span>you, so far</span></div></div>
+  ${g.type==='wolf'?vWolfPick(g,hi):''}
+  ${g.type==='scramble'?`<div class="flat" style="margin-bottom:10px">${[0,1].map(i=>`<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><span style="font-weight:600">Side ${i+1}</span><span class="sub"> · ${g.sides[i].map(p=>playerName(p).split(' ')[0]).join(', ')}</span></div><div class="ctl" style="display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden"><button style="width:46px;height:42px;font-size:22px" onclick="setTeamScore(${i},-1)">−</button><b class="num" style="width:40px;text-align:center;line-height:42px">${(h.team&&h.team[i])||h.par}</b><button style="width:46px;height:42px;font-size:22px" onclick="setTeamScore(${i},1)">+</button></div></div>`).join('')}</div>`
+  :`<div class="flat" style="margin-bottom:10px">${g.playerIds.map(stepper).join('')}</div>`}
+  ${r.detail[hi]&&r.detail[hi].text?`<p class="sub" style="margin:0 0 10px">${esc(r.detail[hi].text)}</p>`:''}
+  ${g.type==='nassau'?`<button class="btn small block" style="margin-bottom:10px" onclick="addPress(${h.n})">Press from hole ${h.n}</button>`:''}
+  <div class="nav"><button class="btn" ${hi===0?'disabled':''} onclick="gNav(-1)">${hi===0?'First hole':'‹ Hole '+(h.n-1)}</button>
+  ${hi===g.holes.length-1?`<button class="btn green" onclick="finishGame()">Finish game</button>`:`<button class="btn primary" onclick="gNav(1)">Hole ${h.n+1} ›</button>`}</div>
+  <h2>Standing</h2>${standingTable(g,r)}`;
+}
+function vWolfPick(g,hi){const h=g.holes[hi],w=g.playerIds[(h.n-1)%4],others=g.playerIds.filter(p=>p!==w);
+  const cur=h.wolf&&h.wolf.partner;
+  return `<div class="card" style="padding:12px 14px"><div class="row between"><b>${esc(playerName(w))} is the wolf</b>${cur?`<button class="btn small" onclick="setWolf(null)">Clear</button>`:''}</div>
+  <div class="chips" style="margin-top:8px">${others.map(p=>`<button class="${cur===p?'on':''}" onclick="setWolf('${p}')">${esc(playerName(p).split(' ')[0])}</button>`).join('')}<button class="${cur==='lone'?'on bad':''}" onclick="setWolf('lone')">Lone wolf ×2</button></div></div>`}
+function setWolf(v){const g=activeGame();g.holes[g.cur].wolf={partner:v};save();render()}
+function setGScore(pid,d){const g=activeGame(),h=g.holes[g.cur];h.scores[pid]=Math.max(1,(h.scores[pid]||h.par)+d);save();render()}
+function setTeamScore(i,d){const g=activeGame(),h=g.holes[g.cur];h.team=h.team||[0,0];h.team[i]=Math.max(1,(h.team[i]||h.par)+d);save();render()}
+function gNav(d){const g=activeGame();syncMyScore(g,g.cur);
+  if(d>0&&g.type!=='scramble'){const h=g.holes[g.cur];g.playerIds.forEach(p=>{if(!h.scores[p])h.scores[p]=h.par})}
+  g.cur=Math.max(0,Math.min(g.holes.length-1,g.cur+d));save();render()}
+function addPress(from){const g=activeGame();const seg=from<=9?9:18;
+  g.presses=g.presses||[];g.presses.push({from,to:seg});save();toast(`Press from hole ${from} through ${seg}`);render()}
+function standingTable(g,r){const rows=g.playerIds.map(p=>({p,m:r.money[p],pt:r.pts[p]})).sort((a,b)=>b.m-a.m);
+  const showPts=['skins','stableford','wolf','vegas'].includes(g.type);
+  return `<div class="card tscroll" style="padding:6px 12px"><table><tr><th>Player</th>${showPts?`<th>${g.type==='skins'?'Skins':'Points'}</th>`:''}${g.net?'<th>Strokes</th>':''}<th>Money</th></tr>
+  ${rows.map(x=>`<tr><td><b>${esc(playerName(x.p))}</b></td>${showPts?`<td>${x.pt}</td>`:''}${g.net?`<td>${r.st[x.p].given}</td>`:''}<td style="color:${x.m>0?'var(--green)':x.m<0?'var(--red)':'inherit'};font-weight:700">${money(x.m)}</td></tr>`).join('')}</table>
+  ${r.lines.length?`<p class="sub" style="margin:8px 0 4px">${r.lines.map(esc).join(' · ')}</p>`:''}</div>`}
+function finishGame(){const g=activeGame();openSheet(`<h2 style="margin-top:0">Finish this game?</h2>
+  ${standingTable(g,playGame(g))}
+  <div class="stack" style="margin-top:12px"><button class="btn green block" onclick="DB.activeGame=null;save();closeSheet();go('games',{gopen:'${g.id}'})">Save game</button>
+  <button class="btn block" onclick="closeSheet()">Keep playing</button>
+  <button class="btn danger block" onclick="if(confirm('Delete this game?')){DB.games=DB.games.filter(x=>x.id!=='${g.id}');DB.activeGame=null;save();closeSheet();go('games')}">Delete game</button></div>`)}
+function vGameCard(g,full){const r=playGame(g),G=GAMES[g.type];
+  return `<button class="btn small" onclick="go('games')">‹ Games</button>
+  <h1 style="margin-top:12px">${G.name}${g.net?' · net':''}</h1>
+  <p class="sub" style="margin:-8px 0 12px">${g.date} · ${esc(g.courseName)} · ${money(g.wager)} ${G.wagerLabel.toLowerCase()}</p>
+  ${standingTable(g,r)}
+  <h2>Hole by hole</h2>
+  <div class="card tscroll" style="padding:6px 12px"><table><tr><th>#</th><th>Par</th>${g.playerIds.map(p=>`<th>${esc(playerName(p).split(' ')[0])}</th>`).join('')}<th>Result</th></tr>
+  ${g.holes.map((h,i)=>r.done[i]?`<tr><td>${h.n}</td><td>${h.par}</td>${g.playerIds.map(p=>`<td>${h.scores[p]||'–'}</td>`).join('')}<td style="text-align:left;white-space:normal">${esc((r.detail[i]&&r.detail[i].text)||'')}</td></tr>`:'').join('')}</table></div>
+  <div class="stack"><button class="btn block" onclick="DB.activeGame='${g.id}';save();go('games')">Reopen game</button>
+  <button class="btn block" onclick="copyGame('${g.id}')">Copy settle-up text</button>
+  <button class="btn danger block" onclick="if(confirm('Delete this game?')){DB.games=DB.games.filter(x=>x.id!=='${g.id}');save();go('games')}">Delete game</button></div>`}
+function copyGame(id){const g=DB.games.find(x=>x.id===id),r=playGame(g);
+  const t=`${GAMES[g.type].name}${g.net?' (net)':''} · ${g.date} · ${g.courseName}\n`+
+    g.playerIds.map(p=>`${playerName(p)}: ${money(r.money[p])}`).join('\n')+(r.lines.length?`\n${r.lines.join(' · ')}`:'');
+  navigator.clipboard?.writeText(t).then(()=>toast('Copied'),()=>prompt('Copy:',t))}
+/* ---- roster ---- */
+function vRoster(){return `<button class="btn small" onclick="sub.roster=null;render()">‹ Games</button>
+  <h1 style="margin-top:12px">Players</h1>
+  <p class="sub" style="margin:-8px 0 12px">The first player you pick in a game is you. Handicap indexes drive net scoring.</p>
+  ${DB.players.length?`<div class="card list" style="padding:0 14px">${DB.players.map(p=>`<button class="item" onclick="editPlayer('${p.id}')"><div class="grow"><div style="font-weight:600">${esc(p.name)}</div><div class="sub">${p.index==null?'no index':'index '+p.index}</div></div><span class="sub">›</span></button>`).join('')}</div>`:`<div class="card empty">No players yet.</div>`}
+  <button class="btn primary block" onclick="editPlayer()">Add player</button>`}
+function editPlayer(id){const p=id?DB.players.find(x=>x.id===id):{id:uid(),name:'',index:null};
+  openSheet(`<h2 style="margin-top:0">${id?'Edit player':'Add player'}</h2>
+  <label class="f">Name</label><input class="in" id="pn" value="${esc(p.name)}">
+  <label class="f">Handicap index</label><input class="in" id="px" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 8.4" value="${p.index??''}">
+  <div class="stack" style="margin-top:14px"><button class="btn primary block" onclick="savePlayer('${p.id}')">Save</button>
+  ${id?`<button class="btn danger block" onclick="if(confirm('Remove ${esc(p.name)}?')){DB.players=DB.players.filter(x=>x.id!=='${id}');save();closeSheet();render()}">Remove player</button>`:''}</div>`)}
+function savePlayer(id){const name=document.getElementById('pn').value.trim(),xv=document.getElementById('px').value;
+  if(!name)return toast('Name?');const idx=xv===''?null:+xv;
+  const i=DB.players.findIndex(x=>x.id===id);
+  if(i>=0)DB.players[i]={...DB.players[i],name,index:idx};else DB.players.push({id,name,index:idx});
+  save();closeSheet();render()}
+
+/* ===================== RULES ===================== */
+const RULES=[
+ {k:'skins',t:'Skins',who:'2–4+ players · hole by hole',
+  r:['Every hole is worth one skin.','Outright low score on the hole wins it. Any tie and nobody wins.','A tied hole carries: its skin is added to the next hole, and carries stack.','If the last hole ties, most groups either void those skins or settle them on a playoff hole.'],
+  v:['<b>Net skins:</b> handicap strokes apply, so higher handicaps can win the hard holes.','<b>Validation:</b> a skin only counts if won with par or better.','<b>Birdie multiplier:</b> a skin won with a birdie pays double, an eagle triple — including any carries it absorbed. A hole worth 3 after two carries, won with a birdie, pays 6.'],
+  app:'Carries are automatic. Validation and the multiplier are toggles when you set the game up. The winner collects the pot from every other player.'},
+ {k:'nassau',t:'Nassau',who:'2 players or two 2-man teams · match play',
+  r:['The round is three separate bets: front nine, back nine, and the full 18.','Each is usually for the same amount ($5-$5-$5).','Each is ordinary match play — win a hole, go one up; most holes won takes that bet.','They are fully independent: you can lose the front, win the back, and still take the overall.'],
+  v:['<b>Automatic 2-down press:</b> a side that falls two down can call a new bet running from that hole to the end of the segment.','<b>Junk:</b> birdies, greenies and sandies are often stacked on top.'],
+  app:'Press from hole N adds a new bet through the end of that nine and settles with the rest.'},
+ {k:'wolf',t:'Wolf',who:'4 players · rotating partnerships',
+  r:['Players tee off in a fixed rotation; the wolf role rotates in that same order, so player 1 is wolf on hole 1, player 2 on hole 2, and so on.','The wolf tees off first and watches the other three hit.','After each tee shot the wolf must decide immediately whether to take that player as a partner — before the next shot is struck.','Take a partner and it is 2 vs 2, better ball each side.','Like none of them, and the wolf declares Lone Wolf: 1 vs 3 for double points.','Partner win pays 1 point per player on the winning side. A lone wolf wins or loses 2 points against each opponent.'],
+  v:['<b>Blind wolf:</b> Lone Wolf must be declared before anyone tees off.','<b>Pigs:</b> same idea, committed before seeing any shot.','<b>Money version:</b> convert points straight to a dollar value per point.'],
+  app:'The rotation follows the order you picked the players. Tap a partner or Lone Wolf on each hole; points are zero-sum and money is points × wager.'},
+ {k:'vegas',t:'Vegas',who:'4 players, two teams of 2 · team stroke play',
+  r:['Each team joins its two scores into a two-digit number, low score first: a 4 and a 6 is 46, never 64.','The lower number wins the difference in points — 46 against 51 is a 5-point swing.','<b>The flip rule:</b> if a player makes birdie or better while their partner holds the higher digit, the opposing number is reversed before comparing, so a 56 becomes 65.','Points run across 18 holes and settle at an agreed value per point.'],
+  v:['Some groups flip whenever one partner scores much worse than the other. House rules vary — agree before you tee off.'],
+  app:'The flip is a toggle. It only fires when the birdie-maker\'s partner actually holds the higher digit.',
+  note:'The flip makes this the highest-variance game here. A blow-up hole alongside a partner\'s birdie can swing 20+ points.'},
+ {k:'stableford',t:'Stableford',who:'any number · individual points',
+  r:['Points come from your score against par, not your total strokes.','Albatross 5, eagle 4, birdie 3, par 2, bogey 1, double or worse 0.','Highest total after 18 wins — the opposite of stroke play.','A disaster hole costs you 0 rather than wrecking the card, so there is no reason not to pick up.'],
+  v:['<b>Modified (PGA Tour scale):</b> eagle +5, birdie +2, par 0, bogey −1, double or worse −3.','<b>Net Stableford:</b> apply handicap strokes before working out the points.'],
+  app:'Standard or modified is a toggle, net is a toggle, and the money settles against the group average.'},
+ {k:'bestball',t:'Best Ball (Four-Ball)',who:'teams of 2 · stroke or match play',
+  r:['Everyone plays their own ball the whole way round.','The team score on a hole is simply the lowest of the teammates\' scores.','Score it as stroke play over the 18, or match play hole by hole against the other team\'s best ball.'],
+  v:[], app:'Each side\'s low score is taken automatically from the scores you enter.',
+  note:'Calmer than a scramble — normal golf, with a teammate as insurance on your bad holes.'},
+ {k:'scramble',t:'Scramble (Texas Scramble)',who:'teams of 2–4 · one ball per shot',
+  r:['Everyone tees off.','The team picks the best tee shot and all players hit their next from that spot.','Repeat — hit, pick the best, everyone plays from there — until it is holed.','One score per team per hole.'],
+  v:['<b>Minimum drives:</b> tournaments often require each player\'s tee shot be used a set number of times, so one long hitter cannot carry every hole.','<b>Shamble:</b> scramble off the tee, then everyone plays their own ball in from there, best individual score counting.'],
+  app:'One stepper per side, per hole.',
+  note:'Forgiving and social — the usual choice for charity events and mixed-ability groups.'},
+ {k:'bbb',t:'Bingo Bango Bongo',who:'any group, best as a foursome · points',
+  r:['Three points on every hole, awarded independently of the score.','<b>Bingo:</b> first ball on the green.','<b>Bango:</b> closest to the pin once everyone is on the green.','<b>Bongo:</b> first ball in the hole.','A player can take none, some or all three.','Honours rotate by who is away, which naturally gives shorter hitters more shots at Bingo.'],
+  v:[], note:'Rewards short game and putting over length, so it levels a mixed group.',app:null},
+ {k:'snake',t:'Snake',who:'any number · side bet',
+  r:['Three-putt a green and you have the snake.','It stays with you until somebody else three-putts.','Whoever holds it at the end of the round — or the end of the nine — pays the group.'],
+  v:[], note:'Runs alongside whatever the main game is and does not affect it.',app:null},
+ {k:'rabbit',t:'Rabbit',who:'any number · side bet',
+  r:['Win a hole outright and you hold the rabbit — but it does not pay out yet.','It passes to the next player who wins a hole outright.','Whoever holds it at the end of the front nine, and again at the end of the back, collects for that half.','If the last hole before a checkpoint was tied, the rabbit is loose and nobody collects for that half.'],
+  v:[], app:null},
+ {k:'robin',t:'Round Robin',who:'4, 6 or 8 · rotating partnerships',
+  r:['Partners change every few holes — in a foursome, usually every six (1–6, 7–12, 13–18), so you partner each player once.','Each segment is scored on its own, normally best-ball match play or points.','Results are tallied per player across all three segments.'],
+  v:[], note:'Everyone plays with and against everyone, so one strong pairing cannot own the whole round.',app:null}
+];
+const SIDEBETS=[['Greenie','Closest to the pin on a par 3, in regulation.'],['Sandie','Par or better after being in a bunker.'],['Barkie','Par or better after hitting a tree.'],['Arnie','Par without ever finding the fairway.'],['Polie','Like a greenie, but for approach shots rather than par-3 tee shots.'],['Fish','A penalty for finding the water.']];
+function rulesSheet(k){const x=RULES.find(r=>r.k===k);
+  return `<div class="row between"><h2 style="margin:0">${x.t}</h2><button class="btn small" onclick="closeSheet()">Close</button></div>
+  <p class="sub" style="margin:4px 0 10px">${x.who}</p>
+  <ol style="margin:0;padding-left:20px">${x.r.map(i=>`<li style="margin-bottom:7px">${i}</li>`).join('')}</ol>
+  ${x.app?`<p class="sub" style="margin-top:12px">${x.app}</p>`:''}`}
+function vRules(){
+  const open=sub.rule;
+  if(open){const x=RULES.find(r=>r.k===open);
+    return `<button class="btn small" onclick="sub.rule=null;render()">‹ Rules</button>
+    <h1 style="margin-top:12px">${x.t}</h1><p class="sub" style="margin:-8px 0 14px">${x.who}</p>
+    <div class="card"><h2 style="margin-top:0">How it works</h2><ol style="margin:0;padding-left:20px">${x.r.map(i=>`<li style="margin-bottom:7px">${i}</li>`).join('')}</ol></div>
+    ${x.v&&x.v.length?`<div class="card"><h2 style="margin-top:0">Common variations</h2><ul style="margin:0;padding-left:20px">${x.v.map(i=>`<li style="margin-bottom:7px">${i}</li>`).join('')}</ul></div>`:''}
+    ${x.note?`<div class="card" style="background:var(--green-soft);border-color:var(--green-soft)">${x.note}</div>`:''}
+    ${x.app?`<div class="card"><h2 style="margin-top:0">In this app</h2>${x.app}</div>`:`<p class="sub">Not scored by the app yet — keep this one on the card.</p>`}
+    ${GAMES[x.k]?`<button class="btn primary block" onclick="sub.rule=null;newGame();sub.newgame.type='${x.k}';render()">Start a ${x.t} game</button>`:''}`}
+  return `<button class="btn small" onclick="sub.rules=null;render()">‹ Games</button>
+  <h1 style="margin-top:12px">Rules</h1>
+  <p class="sub" style="margin:-8px 0 12px">Scoring conventions vary by group — worth confirming house rules before you tee off.</p>
+  <div class="card list" style="padding:0 14px">${RULES.map(x=>`<button class="item" onclick="sub.rule='${x.k}';render()"><div class="grow"><div style="font-weight:600">${x.t}${GAMES[x.k]?'':' <span class="badge gray">not scored</span>'}</div><div class="sub">${x.who}</div></div><span class="sub">›</span></button>`).join('')}</div>
+  <h2>Side bets</h2>
+  <div class="card" style="padding:6px 14px">${SIDEBETS.map(([n,d])=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>${n}</b> — <span class="sub">${d}</span></div>`).join('')}
+  <p class="sub" style="margin:8px 0">These stack on top of any of the games above.</p></div>`;
+}
 
 /* ===================== SETTINGS ===================== */
 function vSettings(){const s=DB.settings;
