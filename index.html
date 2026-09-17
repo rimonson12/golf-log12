@@ -357,7 +357,7 @@ function finishRound(){const r=DB.active;r.finishedAt=Date.now();r.pushed=false;
 function vRounds(){
   if(sub.open){const r=DB.rounds.find(x=>x.id===sub.open);if(r)return vRoundDetail(r)}
   const rs=[...DB.rounds].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
-  return `<div class="row between"><h1>Rounds</h1>${pendingCount()?`<button class="btn small green" onclick="syncAll()">Push ${pendingCount()} to Sheets</button>`:''}</div>
+  return `<div class="row between"><h1>Rounds</h1>${pendingCount()?`<button class="btn small green" ${syncing?'disabled':''} onclick="syncAll()">${syncing?'Pushing…':'Push '+pendingCount()+' to Sheets'}</button>`:''}</div>
   ${rs.length?`<div class="card list" style="padding:0 14px">${rs.map(r=>{const c=roundCalc(r);return `<button class="item" onclick="go('rounds',{open:'${r.id}'})">
     <span class="dot ${r.pushed?'ok':'wait'}" title="${r.pushed?'Pushed':'Not pushed'}"></span>
     <div class="grow"><div style="font-weight:600">${esc(r.courseName)}</div><div class="sub">${r.date} · ${c.holes} holes · ${r.mode==='shots'?'shots':'quick'}</div></div>
@@ -383,7 +383,7 @@ function vRoundDetail(r){const c=roundCalc(r);
   ${r.holes.map(h=>{const x=holeCalc(h);if(!x.logged)return '';return `<tr><td>${h.n}</td><td>${h.par}</td><td>${markHtml(h)}</td><td>${x.putts}</td><td>${x.fir==null?'':x.fir==='hit'?'✓':x.fir==='miss'?'✗':x.fir[0].toUpperCase()}</td><td>${x.gir==null?'':x.gir?'✓':'✗'}</td><td>${x.pen||''}</td></tr>`}).join('')}</table></div>
   ${r.notes?`<div class="card"><div class="sub">Notes</div>${esc(r.notes)}</div>`:''}
   <div class="stack">
-    <button class="btn green block" onclick="pushRound(DB.rounds.find(x=>x.id==='${r.id}'))">${r.pushed?'Push again':'Push to Sheets'}</button>
+    <button class="btn green block" ${inflight.has(r.id)?'disabled':''} onclick="pushRound(DB.rounds.find(x=>x.id==='${r.id}'))">${inflight.has(r.id)?'Pushing…':r.pushed?'Push again':'Push to Sheets'}</button>
     <button class="btn block" onclick="reopenRound('${r.id}')">Edit round</button>
     <button class="btn block" onclick="copyCSV('${r.id}')">Copy as CSV</button>
     <button class="btn danger block" onclick="if(confirm('Delete this round?')){DB.rounds=DB.rounds.filter(x=>x.id!=='${r.id}');save();go('rounds')}">Delete round</button>
@@ -400,19 +400,24 @@ function payload(r){const c=roundCalc(r);const base={roundId:r.id,date:r.date,co
   });
   return {round:{...base,holes:c.holes,score:c.score,par:c.par,toPar:c.toPar,putts:c.putts,pen:c.pen,firHit:c.firH,firOpp:c.firO,girHit:c.girH,girOpp:c.girO,scrHit:c.scrH,scrOpp:c.scrO,threePutts:c.threeP,notes:r.notes||'',rating:r.rating??'',slope:r.slope??'',differential:c.diff??''},holes,shots};
 }
+const inflight=new Set();let syncing=false;
 async function pushRound(r,quiet){
   const url=DB.settings.sheetUrl;if(!url){if(!quiet){toast('Add your Sheets script URL in Settings')}return false}
   if(!navigator.onLine){if(!quiet)toast('Offline — will push when you have signal');return false}
+  if(inflight.has(r.id)){if(!quiet)toast('Still pushing that round…');return false}
+  inflight.add(r.id);render();if(!quiet)toast('Pushing…');
   try{
     const res=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload(r))});
     const j=await res.json();
     if(!j.ok)throw new Error(j.error||'Script error');
-    r.pushed=true;r.pushedAt=Date.now();save();render();toast('Pushed to Sheets');return true;
+    r.pushed=true;r.pushedAt=Date.now();save();toast('Pushed to Sheets');return true;
   }catch(e){if(!quiet)toast('Push failed: '+(e.message||'network'));return false}
+  finally{inflight.delete(r.id);render()}
 }
-async function syncAll(){let n=0;for(const r of DB.rounds.filter(x=>!x.pushed)){if(await pushRound(r,true))n++;else break}
-  toast(n?`Pushed ${n} round${n>1?'s':''}`:'Nothing pushed — check signal or Settings')}
-window.addEventListener('online',()=>{if(pendingCount()&&DB.settings.sheetUrl)syncAll()});
+async function syncAll(quiet){if(syncing)return;syncing=true;let n=0;
+  try{for(const r of DB.rounds.filter(x=>!x.pushed)){if(await pushRound(r,true))n++;else break}}finally{syncing=false}
+  if(n||!quiet)toast(n?`Pushed ${n} round${n>1?'s':''}`:'Nothing pushed — check signal or Settings')}
+let onlineT;window.addEventListener('online',()=>{clearTimeout(onlineT);onlineT=setTimeout(()=>{if(pendingCount()&&DB.settings.sheetUrl)syncAll(true)},4000)});
 function copyCSV(id){const p=payload(DB.rounds.find(x=>x.id===id));
   const line=o=>Object.values(o).map(v=>/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':v).join(',');
   const blk=(name,rows)=>rows.length?`# ${name}\n${Object.keys(rows[0]).join(',')}\n${rows.map(line).join('\n')}\n`:'';
