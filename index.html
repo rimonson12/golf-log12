@@ -108,6 +108,10 @@ th:first-child,td:first-child{text-align:left}
 .sheet .pane{background:var(--paper);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + var(--sab));max-height:88vh;overflow:auto}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + var(--sab));background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;margin-right:8px;vertical-align:-2px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn .spin{border-color:rgba(255,255,255,.35);border-top-color:#fff}
+.btn:not(.green):not(.primary) .spin{border-color:#d0d5cf;border-top-color:var(--ink)}
 .holes-grid{display:grid;grid-template-columns:34px 1fr 1fr;gap:6px;align-items:center;font-size:14px}
 .holes-grid input{min-height:40px;padding:0 8px;text-align:center}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
@@ -154,7 +158,7 @@ function save(){try{localStorage.setItem(K,JSON.stringify(DB))}catch(e){toast('C
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let toastT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
+let toastT;function toast(m,sticky){const t=document.getElementById('toast');t.innerHTML=(sticky?'<span class="spin"></span>':'')+esc(m);t.classList.add('show');clearTimeout(toastT);if(!sticky)toastT=setTimeout(()=>t.classList.remove('show'),2400)}
 const fmtPar=n=>n===0?'E':(n>0?'+'+n:String(n));
 const pct=(a,b)=>b?Math.round(100*a/b)+'%':'–';
 const fx=(n,d=1)=>n==null||isNaN(n)?'–':n.toFixed(d);
@@ -357,7 +361,7 @@ function finishRound(){const r=DB.active;r.finishedAt=Date.now();r.pushed=false;
 function vRounds(){
   if(sub.open){const r=DB.rounds.find(x=>x.id===sub.open);if(r)return vRoundDetail(r)}
   const rs=[...DB.rounds].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
-  return `<div class="row between"><h1>Rounds</h1>${pendingCount()?`<button class="btn small green" ${syncing?'disabled':''} onclick="syncAll()">${syncing?'Pushing…':'Push '+pendingCount()+' to Sheets'}</button>`:''}</div>
+  return `<div class="row between"><h1>Rounds</h1>${pendingCount()?`<button class="btn small green" ${syncing?'disabled':''} onclick="syncAll()">${syncing?'<span class="spin"></span>Pushing…':'Push '+pendingCount()+' to Sheets'}</button>`:''}</div>
   ${rs.length?`<div class="card list" style="padding:0 14px">${rs.map(r=>{const c=roundCalc(r);return `<button class="item" onclick="go('rounds',{open:'${r.id}'})">
     <span class="dot ${r.pushed?'ok':'wait'}" title="${r.pushed?'Pushed':'Not pushed'}"></span>
     <div class="grow"><div style="font-weight:600">${esc(r.courseName)}</div><div class="sub">${r.date} · ${c.holes} holes · ${r.mode==='shots'?'shots':'quick'}</div></div>
@@ -383,7 +387,7 @@ function vRoundDetail(r){const c=roundCalc(r);
   ${r.holes.map(h=>{const x=holeCalc(h);if(!x.logged)return '';return `<tr><td>${h.n}</td><td>${h.par}</td><td>${markHtml(h)}</td><td>${x.putts}</td><td>${x.fir==null?'':x.fir==='hit'?'✓':x.fir==='miss'?'✗':x.fir[0].toUpperCase()}</td><td>${x.gir==null?'':x.gir?'✓':'✗'}</td><td>${x.pen||''}</td></tr>`}).join('')}</table></div>
   ${r.notes?`<div class="card"><div class="sub">Notes</div>${esc(r.notes)}</div>`:''}
   <div class="stack">
-    <button class="btn green block" ${inflight.has(r.id)?'disabled':''} onclick="pushRound(DB.rounds.find(x=>x.id==='${r.id}'))">${inflight.has(r.id)?'Pushing…':r.pushed?'Push again':'Push to Sheets'}</button>
+    <button class="btn green block" ${inflight.has(r.id)?'disabled':''} onclick="pushRound(DB.rounds.find(x=>x.id==='${r.id}'))">${inflight.has(r.id)?'<span class="spin"></span>Pushing…':r.pushed?'Push again':'Push to Sheets'}</button>
     <button class="btn block" onclick="reopenRound('${r.id}')">Edit round</button>
     <button class="btn block" onclick="copyCSV('${r.id}')">Copy as CSV</button>
     <button class="btn danger block" onclick="if(confirm('Delete this round?')){DB.rounds=DB.rounds.filter(x=>x.id!=='${r.id}');save();go('rounds')}">Delete round</button>
@@ -405,16 +409,16 @@ async function pushRound(r,quiet){
   const url=DB.settings.sheetUrl;if(!url){if(!quiet){toast('Add your Sheets script URL in Settings')}return false}
   if(!navigator.onLine){if(!quiet)toast('Offline — will push when you have signal');return false}
   if(inflight.has(r.id)){if(!quiet)toast('Still pushing that round…');return false}
-  inflight.add(r.id);render();if(!quiet)toast('Pushing…');
+  inflight.add(r.id);render();toast('Pushing '+r.courseName+' to Sheets…',true);
   try{
     const res=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload(r))});
     const j=await res.json();
     if(!j.ok)throw new Error(j.error||'Script error');
     r.pushed=true;r.pushedAt=Date.now();save();toast('Pushed to Sheets');return true;
-  }catch(e){if(!quiet)toast('Push failed: '+(e.message||'network'));return false}
+  }catch(e){toast('Push failed: '+(e.message||'network'));return false}
   finally{inflight.delete(r.id);render()}
 }
-async function syncAll(quiet){if(syncing)return;syncing=true;let n=0;
+async function syncAll(quiet){if(syncing)return;syncing=true;let n=0;render();
   try{for(const r of DB.rounds.filter(x=>!x.pushed)){if(await pushRound(r,true))n++;else break}}finally{syncing=false}
   if(n||!quiet)toast(n?`Pushed ${n} round${n>1?'s':''}`:'Nothing pushed — check signal or Settings')}
 let onlineT;window.addEventListener('online',()=>{clearTimeout(onlineT);onlineT=setTimeout(()=>{if(pendingCount()&&DB.settings.sheetUrl)syncAll(true)},4000)});
@@ -533,7 +537,7 @@ function vSettings(){const s=DB.settings;
   <div class="card"><h2 style="margin-top:0">Google Sheets</h2>
     <label class="f">Apps Script web app URL</label><input class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(s.sheetUrl)}" onchange="DB.settings.sheetUrl=this.value.trim();save()">
     <p class="sub" style="margin:8px 0 0">Rounds push here when you tap Push, and automatically when you come back online.</p>
-    <button class="btn small block" style="margin-top:10px" onclick="testSheet()">Test connection</button>
+    <button class="btn small block" style="margin-top:10px" ${testing?'disabled':''} onclick="testSheet()">${testing?'<span class="spin"></span>Testing connection…':'Test connection'}</button>
   </div>
   <div class="card"><h2 style="margin-top:0">Scorecard scanning <span class="sub" style="font-weight:400">optional</span></h2>
     <p class="sub" style="margin:0 0 6px">Lets "Scan scorecard photo" in Courses read a card and fill in pars, yardages, rating and slope. Needs an API key from console.anthropic.com; costs a fraction of a cent per scan. The key is stored only on this phone.</p>
@@ -559,9 +563,11 @@ function vSettings(){const s=DB.settings;
   </div>
   <p class="sub" style="text-align:center">Golf Log v2 · ${DB.rounds.length} rounds · ${DB.courses.length} courses</p>`;
 }
-async function testSheet(){const url=DB.settings.sheetUrl;if(!url)return toast('Paste the script URL first');
+let testing=false;
+async function testSheet(){if(testing)return;const url=DB.settings.sheetUrl;if(!url)return toast('Paste the script URL first');
   if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url))return toast('URL should start with https://script.google.com/macros/s/ and end with /exec');
-  let r,j;
+  testing=true;render();toast('Testing connection…',true);try{await testSheetInner(url)}finally{testing=false;render()}}
+async function testSheetInner(url){let r,j;
   try{r=await fetch(url+'?ping=1',{method:'GET',redirect:'follow'})}catch(e){return toast('GET failed: '+(e.message||e))}
   try{j=await r.json()}catch(e){return toast('Script replied but not JSON (status '+r.status+') — access is probably not "Anyone"')}
   if(!j.ok)return toast('Script error: '+(j.error||'not ok'));
