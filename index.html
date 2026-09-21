@@ -19,13 +19,16 @@
   --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;overscroll-behavior:none}
+html{height:100%}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif}
+body{min-height:100%;-webkit-overflow-scrolling:touch}
 body{padding-top:var(--sat);-webkit-user-select:none;user-select:none}
 input,textarea,select{font:inherit;color:inherit;-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--green);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
-#app{padding:12px 14px calc(76px + var(--sab));max-width:560px;margin:0 auto;min-height:100vh}
+#app{padding:12px 14px calc(96px + var(--sab));max-width:560px;margin:0 auto;min-height:100%}
+.shotscroll{max-height:38vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 h1{font-size:26px;font-weight:700;margin:6px 0 14px;letter-spacing:-0.02em}
 h2{font-size:17px;font-weight:600;margin:20px 0 8px}
 .sub{color:var(--mute);font-size:14px}
@@ -168,7 +171,7 @@ const fx=(n,d=1)=>n==null||isNaN(n)?'–':n.toFixed(d);
 function penalties(h){return (h.shots||[]).filter(s=>s.result==='pen').length + (h.mode==='quick'?(h.pen||0):0)}
 function holeCalc(h){
   const isShots=h.mode==='shots';
-  const shots=h.shots||[];
+  const shots=h.shots||[];let holedOut=false;
   const pen=isShots?shots.filter(s=>s.result==='pen').length:(h.pen||0);
   const putts=h.putts||0;
   let score,fir,gir;
@@ -176,6 +179,7 @@ function holeCalc(h){
     score=shots.length+pen+putts;
     if(h.par>=4&&shots.length){const r=shots[0].result;fir=r==='good'?'hit':(r==='left'||r==='right')?r:'miss'}else fir=null;
     gir=shots.length? (shots.length+pen)<=h.par-2 : null;
+    holedOut=shots.length>0&&putts===0;
   }else{
     score=h.score||h.par||0;
     fir=h.par>=4?(h.fir||null):null;
@@ -185,8 +189,11 @@ function holeCalc(h){
   if(!logged)score=0;
   const scr=(gir===false&&logged)?(score<=h.par):null;
   let girMiss=null;
-  if(gir===false){if(isShots){const i=h.par-2-pen-1;const a=i>=0?shots[i]:shots[0];if(a)girMiss=a.result==='good'?null:a.result}else girMiss=h.girMiss||null}
-  return {score,pen,putts,fir,gir,scr,logged,toPar:score-h.par,girMiss};
+  if(gir===false){if(isShots){const i=h.par-2-pen-1;
+      // the last shot is the one that reached the green, so it never counts as a green miss
+      const a=(i>=0&&i<shots.length-1)?shots[i]:null;if(a)girMiss=a.result==='good'?null:a.result}
+    else girMiss=h.girMiss||null}
+  return {score,pen,putts,fir,gir,scr,logged,toPar:score-h.par,girMiss,holedOut};
 }
 function markCls(toPar){return toPar<=-2?'bb':toPar===-1?'b':toPar===0?'e':toPar===1?'o':'oo'}
 function markHtml(h){const c=holeCalc(h);return c.logged?`<span class="mark ${markCls(c.toPar)}">${c.score}</span>`:'<span class="mark"></span>'}
@@ -289,9 +296,10 @@ function editHoleInfo(){const h=DB.active.holes[DB.active.cur];
 
 function vShotsEntry(h,c){
   const sel=sub.club;
-  return `<div class="flat" style="margin-bottom:12px">
-    ${h.shots.length?h.shots.map((s,i)=>`<div class="shotrow"><span class="idx num">${i+1}</span><span class="club">${esc(s.club)}</span><span class="res ${s.result==='good'?'good':s.result==='pen'?'pen':''}">${RESULTS[s.result]}${s.result==='pen'?' +1':''}<div class="det">${[s.lie,s.strike,s.prox!=null?s.prox+' ft':null].filter(Boolean).join(' · ')}</div></span><button class="x" aria-label="Details" onclick="shotDetail(${i})">…</button><button class="x" aria-label="Delete" onclick="delShot(${i})">×</button></div>`).join(''):`<div class="empty" style="padding:12px;border-bottom:1px solid var(--line)">Tap a club to log your tee shot</div>`}
+  return `<div class="flat shotscroll" id="shotlist" style="margin-bottom:12px">
+    ${h.shots.length?h.shots.map((s,i)=>`<div class="shotrow"><span class="idx num">${i+1}</span><span class="club">${esc(s.club)}</span><span class="res ${s.result==='good'?'good':s.result==='pen'?'pen':''}">${RESULTS[s.result]}${s.result==='pen'?' +1':''}<div class="det">${[s.lie,s.strike,s.prox!=null?s.prox+' ft':null,(i===h.shots.length-1&&s.result!=='pen')?(h.putts?'on the green':'holed out'):null].filter(Boolean).join(' · ')}</div></span><button class="x" aria-label="Details" onclick="shotDetail(${i})">…</button><button class="x" aria-label="Delete" onclick="delShot(${i})">×</button></div>`).join(''):`<div class="empty" style="padding:12px;border-bottom:1px solid var(--line)">Tap a club to log your tee shot</div>`}
   </div>
+  ${h.shots.length?`<p class="sub" style="margin:-4px 0 10px;font-size:13px">${c.holedOut?`Holed out in ${c.score}`:`On the green in ${h.shots.length+c.pen}, ${h.putts} putt${h.putts===1?'':'s'}`}${c.gir===false&&h.shots.length+c.pen>h.par-2?' · green missed':''}</p>`:''}
   ${sub.detail!=null&&h.shots[sub.detail]?vShotDetailPanel(h,sub.detail)
   :sel?`<div class="row between"><b>${esc(sel)} — where did it go?</b><button class="btn small" onclick="sub.club=null;render()">Cancel</button></div>
     <div class="target">
@@ -305,9 +313,10 @@ function vShotsEntry(h,c){
     <div class="step"><span>Putts</span><div class="ctl"><button onclick="bump('putts',-1)">−</button><b class="num">${h.putts}</b><button onclick="bump('putts',1)">+</button></div></div>
   </div>`;
 }
+function keepInView(){requestAnimationFrame(()=>{const l=document.getElementById('shotlist');if(l)l.scrollTop=l.scrollHeight})}
 function addShot(result){const h=DB.active.holes[DB.active.cur];const prev=h.shots[h.shots.length-1];
   let lie='Tee';if(prev){lie=prev.result==='good'?'Fairway':prev.result==='pen'?(prev.lie||'Tee'):'Rough'}
-  h.shots.push({club:sub.club,result,lie,strike:null,prox:null});sub.club=null;sub.detail=h.shots.length-1;save();render()}
+  h.shots.push({club:sub.club,result,lie,strike:null,prox:null});sub.club=null;sub.detail=h.shots.length-1;save();render();keepInView()}
 function vShotDetailPanel(h,i){const s=h.shots[i];
   const chips=(k,opts)=>`<div class="chips">${opts.map(o=>`<button class="${s[k]===o?'on':''}" onclick="setShotInline(${i},'${k}',${s[k]===o?'null':`'${o}'`})">${o}</button>`).join('')}</div>`;
   return `<div class="card" style="border-color:var(--ink)">
@@ -318,8 +327,8 @@ function vShotDetailPanel(h,i){const s=h.shots[i];
     <input class="in" type="number" inputmode="numeric" placeholder="leave blank for tee shots" value="${s.prox??''}" onchange="DB.active.holes[DB.active.cur].shots[${i}].prox=this.value===''?null:+this.value;save()">
     <button class="btn primary block" style="margin-top:14px" onclick="sub.detail=null;render()">Next shot</button>
   </div>`}
-function setShotInline(i,k,v){DB.active.holes[DB.active.cur].shots[i][k]=v;save();render()}
-function delShot(i){DB.active.holes[DB.active.cur].shots.splice(i,1);sub.detail=null;save();render()}
+function setShotInline(i,k,v){DB.active.holes[DB.active.cur].shots[i][k]=v;save();render();keepInView()}
+function delShot(i){DB.active.holes[DB.active.cur].shots.splice(i,1);sub.detail=null;save();render();keepInView()}
 function bump(k,d){const h=DB.active.holes[DB.active.cur];h[k]=Math.max(0,(h[k]||0)+d);if(h.mode==='quick')h.touched=true;save();render()}
 function touchQuick(){const h=DB.active.holes[DB.active.cur];if(h.mode==='quick'&&!h.touched){h.touched=true;h.score=h.score||h.par;save()}}
 function shotDetail(i){const h=DB.active.holes[DB.active.cur],s=h.shots[i];
@@ -441,7 +450,7 @@ function vStats(){
   const diffs=[];const gm={long:0,left:0,right:0,short:0,pen:0};let gmN=0;
   rs.forEach(r=>{const c=roundCalc(r);if(c.diff!=null)diffs.push(c.diff);T.holes+=c.holes;T.toPar+=c.toPar;T.putts+=c.putts;T.pen+=c.pen;T.firH+=c.firH;T.firO+=c.firO;T.girH+=c.girH;T.girO+=c.girO;T.scrH+=c.scrH;T.scrO+=c.scrO;T.threeP+=c.threeP;
     r.holes.forEach(h=>{const x=holeCalc(h);if(!x.logged)return;const k='p'+Math.min(5,Math.max(3,h.par));T[k][0]+=x.toPar;T[k][1]++;if(x.gir===false){gmN++;if(x.girMiss&&gm[x.girMiss]!=null)gm[x.girMiss]++}
-      if(h.mode==='shots')h.shots.forEach(s=>{const o=club[s.club]||(club[s.club]={n:0,good:0,left:0,right:0,short:0,long:0,pen:0,heel:0,toe:0,proxN:0,proxSum:0});o.n++;o[s.result]++;if(s.strike==='Heel')o.heel++;if(s.strike==='Toe')o.toe++;if(s.prox!=null){o.proxN++;o.proxSum+=s.prox;proxN++;proxSum+=s.prox}})});
+      if(h.mode==='shots')h.shots.forEach(s=>{const o=club[s.club]||(club[s.club]={n:0,good:0,left:0,right:0,short:0,long:0,pen:0,strikeN:0,strike:{Center:0,Heel:0,Toe:0,Thin:0,Fat:0},proxN:0,proxSum:0});o.n++;o[s.result]++;if(s.strike&&o.strike[s.strike]!=null){o.strikeN++;o.strike[s.strike]++}if(s.prox!=null){o.proxN++;o.proxSum+=s.prox;proxN++;proxSum+=s.prox}})});
   });
   const per18=v=>T.holes?v/T.holes*18:null;
   const order=DB.settings.clubs;const clubs=Object.keys(club).sort((a,b)=>order.indexOf(a)-order.indexOf(b));
@@ -466,8 +475,13 @@ function vStats(){
     <div class="kpi" style="text-align:center"><b class="num">${pct(gm.left,gmN)}</b><span>left</span></div><div class="kpi" style="text-align:center;background:var(--paper)"><b class="num">${pct(gmN-gm.long-gm.left-gm.right-gm.short-gm.pen,gmN)}</b><span>not noted</span></div><div class="kpi" style="text-align:center"><b class="num">${pct(gm.right,gmN)}</b><span>right</span></div>
     <span class="ph"></span><div class="kpi" style="text-align:center"><b class="num">${pct(gm.short,gmN)}</b><span>short</span></div><span class="ph"></span></div>${gm.pen?`<p class="sub" style="margin:8px 0 0;font-size:12px">${gm.pen} missed because of a penalty</p>`:''}</div>`:''}
   <h2>Score trend</h2><div class="card" style="padding:10px">${trendSvg(rs)}</div>
-  ${clubs.length?`<h2>By club <span class="sub" style="font-weight:400">shot-entry rounds only</span></h2><div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Shots</th><th>Good</th><th>L</th><th>R</th><th>Sh</th><th>Lg</th><th>Pen</th><th>Heel</th><th>Toe</th><th>Prox ft</th></tr>
-    ${clubs.map(k=>{const o=club[k];return `<tr><td><b>${esc(k)}</b></td><td>${o.n}</td><td>${pct(o.good,o.n)}</td><td>${o.left}</td><td>${o.right}</td><td>${o.short}</td><td>${o.long}</td><td>${o.pen||''}</td><td>${o.heel||''}</td><td>${o.toe||''}</td><td>${o.proxN?Math.round(o.proxSum/o.proxN):''}</td></tr>`}).join('')}</table></div>`:''}`;
+  ${clubs.length?`<h2>Where it goes <span class="sub" style="font-weight:400">by club</span></h2>
+    <div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Good</th><th>Left</th><th>Right</th><th>Short</th><th>Long</th><th>Pen</th><th>Prox ft</th></tr>
+    ${clubs.map(k=>{const o=club[k],thin=o.n<5;return `<tr style="${thin?'color:var(--mute)':''}"><td><b>${esc(k)}</b></td><td>${pct(o.good,o.n)}</td><td>${pct(o.left,o.n)}</td><td>${pct(o.right,o.n)}</td><td>${pct(o.short,o.n)}</td><td>${pct(o.long,o.n)}</td><td>${o.pen?pct(o.pen,o.n):'–'}</td><td>${o.proxN?Math.round(o.proxSum/o.proxN):'–'}</td></tr>`}).join('')}</table></div>
+    ${(()=>{const sc=clubs.filter(k=>club[k].strikeN);return sc.length?`<h2>Strike <span class="sub" style="font-weight:400">where it came off the face</span></h2>
+    <div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Center</th><th>Heel</th><th>Toe</th><th>Thin</th><th>Fat</th></tr>
+    ${sc.map(k=>{const o=club[k],thin=o.strikeN<5;return `<tr style="${thin?'color:var(--mute)':''}"><td><b>${esc(k)}</b></td>${['Center','Heel','Toe','Thin','Fat'].map(x=>`<td>${pct(o.strike[x],o.strikeN)}</td>`).join('')}</tr>`}).join('')}</table></div>`:''})()}
+    <p class="sub" style="font-size:12px;margin-top:-4px">Clubs with fewer than 5 recorded shots are shown in grey — small samples move around a lot.</p>`:''}`;
 }
 function trendSvg(rs){
   const pts=rs.slice(-20).map(r=>{const c=roundCalc(r);return {v:c.holes?c.toPar/c.holes*18:0,t:r.type,d:r.date}});
@@ -518,6 +532,18 @@ function applyCourseJSON(txt){let j;try{j=JSON.parse(String(txt).replace(/```jso
   const c=sub.edit;c.name=j.name||c.name;c.pars=pad(j.pars).map(x=>x||4);if(Array.isArray(j.si))c.si=pad(j.si).map((x,i)=>x||i+1);
   if(Array.isArray(j.tees)&&j.tees.length)c.tees=j.tees.map(t=>({id:uid(),name:t.name||'Tee',rating:t.rating?+t.rating:null,slope:t.slope?+t.slope:null,yds:pad(t.yards||t.yds)}));
   sub.tab='par';render();toast(n<18?'Only '+n+' holes read — fill in the rest':'Check the numbers, then save');return true}
+function importCourses(text,quiet){
+  let arr;try{arr=JSON.parse(String(text).replace(/```json|```/g,'').trim())}catch(e){toast('That was not valid JSON');return 0}
+  if(!Array.isArray(arr))arr=[arr];
+  const pad=(a,d)=>{a=(a||[]).map(x=>+x||0);while(a.length<18)a.push(d||0);return a.slice(0,18)};
+  let added=0,updated=0;
+  arr.forEach(j=>{if(!j||!j.name)return;
+    const tees=(Array.isArray(j.tees)&&j.tees.length?j.tees:[{name:'Default'}]).map(t=>({id:uid(),name:t.name||'Tee',rating:t.rating?+t.rating:null,slope:t.slope?+t.slope:null,yds:pad(t.yards||t.yds)}));
+    const c={id:uid(),name:j.name,pars:pad(j.pars,4).map(x=>x||4),si:pad(j.si).map((x,i)=>x||i+1),tees};
+    const i=DB.courses.findIndex(x=>x.name.toLowerCase()===c.name.toLowerCase());
+    if(i>=0){c.id=DB.courses[i].id;DB.courses[i]=c;updated++}else{DB.courses.push(c);added++}});
+  save();if(!quiet)toast(`${added} course${added===1?'':'s'} added${updated?', '+updated+' updated':''}`);render();return added+updated}
+function importCoursesFile(f){if(!f)return;const r=new FileReader();r.onload=()=>importCourses(r.result);r.readAsText(f)}
 function pasteCourse(){openSheet(`<h2 style="margin-top:0">Paste course data</h2>
   <p class="sub" style="margin:0 0 8px">No API key? Take a photo of the scorecard, send it to Claude with the prompt below, and paste the JSON it returns here.</p>
   <button class="btn small block" onclick="navigator.clipboard?.writeText(COURSE_PROMPT).then(()=>toast('Prompt copied'))">Copy the prompt for Claude</button>
@@ -880,6 +906,11 @@ function vSettings(){const s=DB.settings;
     <label class="f">Anthropic API key</label><input class="in" type="password" autocomplete="off" placeholder="sk-ant-…" value="${esc(s.apiKey||'')}" onchange="DB.settings.apiKey=this.value.trim();save()">
     <label class="f">Model</label><input class="in" value="${esc(s.model||'claude-sonnet-5')}" onchange="DB.settings.model=this.value.trim();save()">
   </div>
+  <div class="card"><h2 style="margin-top:0">Course library</h2>
+    <p class="sub" style="margin:0 0 10px">Load several courses at once from a JSON file, or export what you have.</p>
+    <div class="stack"><label class="btn block" style="cursor:pointer">Import courses file<input type="file" accept="application/json,.json" style="display:none" onchange="importCoursesFile(this.files[0])"></label>
+    <button class="btn block" onclick="exportCourses()">Export my courses</button></div>
+  </div>
   <div class="card"><h2 style="margin-top:0">Clubs</h2>
     <label class="f">Comma-separated, in bag order</label><input class="in" value="${esc(s.clubs.join(', '))}" onchange="DB.settings.clubs=this.value.split(',').map(x=>x.trim()).filter(Boolean);save();render()">
   </div>
@@ -908,6 +939,8 @@ async function testSheetInner(url){let r,j;
   try{j=await r.json()}catch(e){return toast('Script replied but not JSON (status '+r.status+') — access is probably not "Anyone"')}
   if(!j.ok)return toast('Script error: '+(j.error||'not ok'));
   try{r=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({ping:true})});j=await r.json();toast(j.ok?'Connected ✓ (GET and POST both work)':'POST replied but not OK')}catch(e){toast('GET works, POST failed: '+(e.message||e))}}
+function exportCourses(){const data=DB.courses.map(c=>({name:c.name,pars:c.pars,si:courseSI(c),tees:c.tees.map(t=>({name:t.name,rating:t.rating,slope:t.slope,yards:t.yds}))}));
+  const b=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='golf-courses.json';document.body.appendChild(a);a.click();a.remove()}
 function exportJSON(){const b=new Blob([JSON.stringify(DB)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`golflog-backup-${today()}.json`;document.body.appendChild(a);a.click();a.remove()}
 function copyJSON(){navigator.clipboard?.writeText(JSON.stringify(DB)).then(()=>toast('Backup copied'),()=>toast('Copy blocked — use export'))}
 function restoreFile(f){if(!f)return;const r=new FileReader();r.onload=()=>restoreText(r.result);r.readAsText(f)}
