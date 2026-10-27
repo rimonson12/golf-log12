@@ -179,7 +179,7 @@ function holeCalc(h){
   let score,fir,gir;
   if(isShots){
     score=shots.length+pen+putts;
-    if(h.par>=4&&shots.length){const r=shots[0].result;fir=(r==='good'||(shots[1]&&shots[1].lie==='Fairway'))?'hit':(r==='left'||r==='right')?r:'miss'}else fir=null;
+    if(h.par>=4&&shots.length){const r=shots[0].result;const hit=shots[1]?shots[1].lie==='Fairway':r==='good';fir=hit?'hit':(r==='left'||r==='right')?r:'miss'}else fir=null;
     gir=shots.length? (shots.length+pen)<=h.par-2 : null;
     holedOut=shots.length>0&&putts===0;
   }else{
