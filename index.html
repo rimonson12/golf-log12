@@ -147,6 +147,8 @@ const DEF_CLUBS=['Dr','3W','Hy','4i','5i','6i','7i','8i','9i','PW','50','54','58
 const RESULTS={good:'Good',left:'Left',right:'Right',short:'Short',long:'Long',pen:'Penalty'};
 const LIES=['Tee','Fairway','Rough','Sand','Fringe','Recovery'];
 const STRIKES=['Center','Heel','Toe','Thin','Fat'];
+const isDriver=k=>/^(dr|drv|driver|1w)$/i.test(String(k||'').trim());
+const strikesFor=k=>isDriver(k)?[...STRIKES,'High']:STRIKES;
 let DB={rounds:[],courses:[],players:[],games:[],active:null,activeGame:null,settings:{clubs:DEF_CLUBS.slice(),sheetUrl:'',defaultMode:'shots',defaultType:'Real'}};
 function load(){try{const s=localStorage.getItem(K);if(s){const d=JSON.parse(s);DB={...DB,...d,settings:{...DB.settings,...(d.settings||{})}}}}catch(e){}
   DB.courses=(DB.courses||[]).map(migrateCourse);DB.players=DB.players||[];DB.games=DB.games||[]}
@@ -177,7 +179,7 @@ function holeCalc(h){
   let score,fir,gir;
   if(isShots){
     score=shots.length+pen+putts;
-    if(h.par>=4&&shots.length){const r=shots[0].result;fir=r==='good'?'hit':(r==='left'||r==='right')?r:'miss'}else fir=null;
+    if(h.par>=4&&shots.length){const r=shots[0].result;fir=(r==='good'||(shots[1]&&shots[1].lie==='Fairway'))?'hit':(r==='left'||r==='right')?r:'miss'}else fir=null;
     gir=shots.length? (shots.length+pen)<=h.par-2 : null;
     holedOut=shots.length>0&&putts===0;
   }else{
@@ -323,7 +325,7 @@ function vShotDetailPanel(h,i){const s=h.shots[i];
   return `<div class="card" style="border-color:var(--ink)">
     <div class="row between"><b>Shot ${i+1} · ${esc(s.club)} · <span style="color:${s.result==='good'?'var(--green)':s.result==='pen'?'var(--red)':'inherit'}">${RESULTS[s.result]}</span></b><button class="btn small" onclick="delShot(${i})">Undo</button></div>
     <label class="f">Lie</label>${chips('lie',LIES)}
-    <label class="f">Strike</label>${chips('strike',STRIKES)}
+    <label class="f">Strike</label>${chips('strike',strikesFor(s.club))}
     <label class="f">Finished this far from the hole (feet)</label>
     <input class="in" type="number" inputmode="numeric" placeholder="leave blank for tee shots" value="${s.prox??''}" onchange="DB.active.holes[DB.active.cur].shots[${i}].prox=this.value===''?null:+this.value;save()">
     <button class="btn primary block" style="margin-top:14px" onclick="sub.detail=null;render()">Next shot</button>
@@ -336,7 +338,7 @@ function shotDetail(i){const h=DB.active.holes[DB.active.cur],s=h.shots[i];
   openSheet(`<div class="row between"><h2 style="margin:0">Shot ${i+1} · ${esc(s.club)} · ${RESULTS[s.result]}</h2><button class="btn small" onclick="closeSheet()">Done</button></div>
   <label class="f">Result</label><div class="chips">${Object.entries(RESULTS).map(([k,v])=>`<button class="${s.result===k?'on':''} ${k==='pen'?'bad':k==='good'?'good':''}" onclick="setShot(${i},'result','${k}')">${v}</button>`).join('')}</div>
   <label class="f">Lie</label><div class="chips">${LIES.map(l=>`<button class="${s.lie===l?'on':''}" onclick="setShot(${i},'lie','${l}')">${l}</button>`).join('')}</div>
-  <label class="f">Strike</label><div class="chips">${STRIKES.map(l=>`<button class="${s.strike===l?'on':''}" onclick="setShot(${i},'strike',${s.strike===l?'null':`'${l}'`})">${l}</button>`).join('')}</div>
+  <label class="f">Strike</label><div class="chips">${strikesFor(s.club).map(l=>`<button class="${s.strike===l?'on':''}" onclick="setShot(${i},'strike',${s.strike===l?'null':`'${l}'`})">${l}</button>`).join('')}</div>
   <label class="f">Finished this far from the hole (feet) — for approaches and chips</label>
   <input class="in" type="number" inputmode="numeric" placeholder="e.g. 18" value="${s.prox??''}" onchange="setShot(${i},'prox',this.value===''?null:+this.value)">`)}
 function setShot(i,k,v){DB.active.holes[DB.active.cur].shots[i][k]=v;save();render();shotDetail(i)}
@@ -508,7 +510,7 @@ function vStats(){
   const diffs=[];const gm={long:0,left:0,right:0,short:0,pen:0};let gmN=0;
   rs.forEach(r=>{const c=roundCalc(r);if(c.diff!=null)diffs.push(c.diff);T.holes+=c.holes;T.toPar+=c.toPar;T.putts+=c.putts;T.pen+=c.pen;T.firH+=c.firH;T.firO+=c.firO;T.girH+=c.girH;T.girO+=c.girO;T.scrH+=c.scrH;T.scrO+=c.scrO;T.threeP+=c.threeP;
     r.holes.forEach(h=>{const x=holeCalc(h);if(!x.logged)return;const k='p'+Math.min(5,Math.max(3,h.par));T[k][0]+=x.toPar;T[k][1]++;if(x.gir===false){gmN++;if(x.girMiss&&gm[x.girMiss]!=null)gm[x.girMiss]++}
-      if(h.mode==='shots')h.shots.forEach(s=>{const o=club[s.club]||(club[s.club]={n:0,good:0,left:0,right:0,short:0,long:0,pen:0,strikeN:0,strike:{Center:0,Heel:0,Toe:0,Thin:0,Fat:0},proxN:0,proxSum:0});o.n++;o[s.result]++;if(s.strike&&o.strike[s.strike]!=null){o.strikeN++;o.strike[s.strike]++}if(s.prox!=null){o.proxN++;o.proxSum+=s.prox;proxN++;proxSum+=s.prox}})});
+      if(h.mode==='shots')h.shots.forEach(s=>{const o=club[s.club]||(club[s.club]={n:0,good:0,left:0,right:0,short:0,long:0,pen:0,strikeN:0,strike:{Center:0,Heel:0,Toe:0,Thin:0,Fat:0,High:0},proxN:0,proxSum:0});o.n++;o[s.result]++;if(s.strike&&o.strike[s.strike]!=null){o.strikeN++;o.strike[s.strike]++}if(s.prox!=null){o.proxN++;o.proxSum+=s.prox;proxN++;proxSum+=s.prox}})});
   });
   const per18=v=>T.holes?v/T.holes*18:null;
   const order=DB.settings.clubs;const clubs=Object.keys(club).sort((a,b)=>order.indexOf(a)-order.indexOf(b));
@@ -538,8 +540,8 @@ function vStats(){
     <div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Good</th><th>Left</th><th>Right</th><th>Short</th><th>Long</th><th>Pen</th><th>Prox ft</th></tr>
     ${clubs.map(k=>{const o=club[k],thin=o.n<5;return `<tr style="${thin?'color:var(--mute)':''}"><td><b>${esc(k)}</b></td><td>${pct(o.good,o.n)}</td><td>${pct(o.left,o.n)}</td><td>${pct(o.right,o.n)}</td><td>${pct(o.short,o.n)}</td><td>${pct(o.long,o.n)}</td><td>${o.pen?pct(o.pen,o.n):'–'}</td><td>${o.proxN?Math.round(o.proxSum/o.proxN):'–'}</td></tr>`}).join('')}</table></div>
     ${(()=>{const sc=clubs.filter(k=>club[k].strikeN);return sc.length?`<h2>Strike <span class="sub" style="font-weight:400">where it came off the face</span></h2>
-    <div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Center</th><th>Heel</th><th>Toe</th><th>Thin</th><th>Fat</th></tr>
-    ${sc.map(k=>{const o=club[k],thin=o.strikeN<5;return `<tr style="${thin?'color:var(--mute)':''}"><td><b>${esc(k)}</b></td>${['Center','Heel','Toe','Thin','Fat'].map(x=>`<td>${pct(o.strike[x],o.strikeN)}</td>`).join('')}</tr>`}).join('')}</table></div>`:''})()}
+    <div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Center</th><th>Heel</th><th>Toe</th><th>Thin</th><th>Fat</th><th>High</th></tr>
+    ${sc.map(k=>{const o=club[k],thin=o.strikeN<5;return `<tr style="${thin?'color:var(--mute)':''}"><td><b>${esc(k)}</b></td>${['Center','Heel','Toe','Thin','Fat','High'].map(x=>`<td>${x==='High'&&!isDriver(k)?'–':pct(o.strike[x],o.strikeN)}</td>`).join('')}</tr>`}).join('')}</table></div>`:''})()}
     <p class="sub" style="font-size:12px;margin-top:-4px">Clubs with fewer than 5 recorded shots are shown in grey — small samples move around a lot.</p>`:''}`;
 }
 function trendSvg(rs){
