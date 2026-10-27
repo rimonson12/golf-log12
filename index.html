@@ -980,6 +980,10 @@ function vSettings(){const s=DB.settings;
     <label class="f">Round type</label><div class="seg"><button class="${s.defaultType==='Real'?'on':''}" onclick="DB.settings.defaultType='Real';save();render()">Real</button><button class="${s.defaultType==='Sim'?'on':''}" onclick="DB.settings.defaultType='Sim';save();render()">Simulator</button></div>
     <label class="f">Entry</label><div class="seg"><button class="${s.defaultMode==='shots'?'on':''}" onclick="DB.settings.defaultMode='shots';save();render()">Every shot</button><button class="${s.defaultMode==='quick'?'on':''}" onclick="DB.settings.defaultMode='quick';save();render()">Quick</button></div>
   </div>
+  <div class="card"><h2 style="margin-top:0">Restore from Google Sheets</h2>
+    <p class="sub" style="margin:0 0 10px">Rebuilds rounds, holes and shots from your sheet. Rounds already on this phone are skipped, so it's safe to run twice. Games and players aren't stored in the sheet.</p>
+    <button class="btn block" ${restoring?'disabled':''} onclick="restoreFromSheets()">${restoring?'<span class="spin"></span>Restoring…':'Restore rounds from Sheets'}</button>
+  </div>
   <div class="card"><h2 style="margin-top:0">Backup</h2>
     <p class="sub" style="margin:0 0 10px">Everything lives on this phone. Export a backup now and then.</p>
     <div class="stack"><button class="btn block" onclick="exportJSON()">Export backup file</button><button class="btn block" onclick="copyJSON()">Copy backup to clipboard</button>
@@ -1009,6 +1013,92 @@ function restoreFile(f){if(!f)return;const r=new FileReader();r.onload=()=>resto
 function restorePaste(){const t=prompt('Paste backup text');if(t)restoreText(t)}
 function restoreText(t){try{const d=JSON.parse(t);if(!d.rounds)throw 0;if(!confirm(`Restore ${d.rounds.length} rounds and ${(d.courses||[]).length} courses? This replaces what's on the phone.`))return;DB={...DB,...d};save();toast('Restored');render()}catch(e){toast('That did not look like a backup')}}
 
+/* ===================== RESTORE FROM SHEETS ===================== */
+const _norm=s=>String(s??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function _pick(row,names){
+  const m=row.__m||(row.__m=(()=>{const o={};Object.keys(row).forEach(k=>{if(k!=='__m')o[_norm(k)]=row[k]});return o})());
+  for(const n of names){const v=m[_norm(n)];if(v!==undefined&&v!=='')return v}
+  return null;
+}
+const _num=v=>{if(v==null||v==='')return null;const n=+v;return isNaN(n)?null:n};
+const _RES_BY_LABEL={good:'good',left:'left',right:'right',short:'short',long:'long',penalty:'pen',pen:'pen'};
+function rebuildFromSheet(data){
+  const rounds=data.rounds||[],holes=data.holes||[],shots=data.shots||[];
+  const dateOf=r=>String(_pick(r,['date'])||'').slice(0,10);
+  const courseOf=r=>String(_pick(r,['course','coursename'])||'');
+  const keyOf=r=>String(_pick(r,['roundId','round id','id'])||(dateOf(r)+'|'+courseOf(r)));
+  const info={};rounds.forEach(r=>{info[keyOf(r)]=r});
+  const byRound={};
+  holes.forEach(h=>{(byRound[keyOf(h)]=byRound[keyOf(h)]||{holes:[],shots:{}}).holes.push(h)});
+  shots.forEach(s=>{const k=keyOf(s);if(!byRound[k])return;const hn=_num(_pick(s,['hole','holenumber']));(byRound[k].shots[hn]=byRound[k].shots[hn]||[]).push(s)});
+  const out=[];
+  Object.keys(byRound).forEach(k=>{
+    const g=byRound[k],first=g.holes[0],inf=info[k]||first;
+    const isReal=String(_pick(inf,['type'])||_pick(first,['type'])||'Real').toLowerCase();
+    const type=isReal.startsWith('sim')?'Sim':'Real';
+    const date=dateOf(first)||today();
+    const courseName=courseOf(first)||'No course';
+    const hs=g.holes.map(h=>{
+      const n=_num(_pick(h,['hole','holenumber']));const par=_num(_pick(h,['par']))||4;
+      const ss=(g.shots[n]||[]).sort((a,b)=>(_num(_pick(a,['shot','shotnumber']))||0)-(_num(_pick(b,['shot','shotnumber']))||0));
+      const base={n,par,yds:_num(_pick(h,['yds','yards']))||0,putts:_num(_pick(h,['putts']))||0};
+      if(ss.length){
+        return {...base,mode:'shots',score:0,fir:null,gir:null,girMiss:null,pen:0,touched:false,
+          shots:ss.map(s=>({club:String(_pick(s,['club'])||''),
+            result:_RES_BY_LABEL[_norm(_pick(s,['result']))]||'good',
+            lie:_pick(s,['lie'])||null,strike:_pick(s,['strike'])||null,prox:_num(_pick(s,['prox','proxft','proximity']))}))}
+      }
+      const gv=_pick(h,['gir']);const fv=_pick(h,['fir']);
+      return {...base,mode:'quick',shots:[],score:_num(_pick(h,['score']))||par,pen:_num(_pick(h,['pen','penalties','penalty','penaltystrokes']))||0,
+        fir:fv?String(fv).toLowerCase():null,gir:gv==null?null:(+gv===1||String(gv).toLowerCase()==='true'),
+        girMiss:_pick(h,['girMiss','missedgreen'])||null,touched:true}
+    }).sort((a,b)=>a.n-b.n);
+    const shotRound=hs.filter(h=>h.mode==='shots').length>=hs.length/2;
+    out.push({id:String(_pick(first,['roundId','round id','id'])||uid()),date,courseId:'',teeId:'',teeName:'',courseName,type,
+      mode:shotRound?'shots':'quick',rating:_num(_pick(inf,['rating','courserating'])),slope:_num(_pick(inf,['slope'])),
+      holes:hs,notes:String(_pick(inf,['notes'])||''),cur:0,pushed:true,pushedAt:Date.now(),
+      createdAt:new Date(date+'T12:00:00').getTime()||Date.now(),restored:true});
+  });
+  return out;
+}
+function coursesFromRounds(rs){
+  const seen={};
+  rs.forEach(r=>{
+    if(r.courseName==='No course')return;
+    if(!seen[r.courseName]){
+      const m=/^(.*?)\s+[–-]\s+(.+)$/.exec(r.courseName);const name=m?m[1]:r.courseName,tee=m?m[2]:'Default';
+      let c=DB.courses.find(x=>x.name.toLowerCase()===name.toLowerCase());
+      if(!c){c={id:uid(),name,pars:Array(18).fill(4),si:Array.from({length:18},(_,i)=>i+1),tees:[]};DB.courses.push(c)}
+      let t=c.tees.find(x=>x.name.toLowerCase()===tee.toLowerCase());
+      if(!t){t={id:uid(),name:tee,rating:null,slope:null,yds:Array(18).fill(0)};c.tees.push(t)}
+      seen[r.courseName]={c,t};
+    }
+    const {c,t}=seen[r.courseName];
+    r.holes.forEach(h=>{if(h.n>=1&&h.n<=18){c.pars[h.n-1]=h.par;if(h.yds)t.yds[h.n-1]=h.yds}});
+    if(!t.rating&&r.rating)t.rating=r.rating;if(!t.slope&&r.slope)t.slope=r.slope;
+    r.courseId=c.id;r.teeId=t.id;r.teeName=t.name;
+  });
+}
+let restoring=false;
+async function restoreFromSheets(){
+  if(restoring)return;const url=DB.settings.sheetUrl;
+  if(!url)return toast('Paste your Sheets script URL above first');
+  if(!navigator.onLine)return toast('You need a connection to restore');
+  restoring=true;render();toast('Reading your sheet…',true);
+  try{
+    const r=await fetch(url+(url.includes('?')?'&':'?')+'action=export',{redirect:'follow'});
+    let j;try{j=await r.json()}catch(e){throw new Error('Script did not return JSON — add Export.gs and redeploy a new version')}
+    if(!j.ok)throw new Error(j.error||'Export failed');
+    if(j.holes===undefined)throw new Error('Script is still the old version — redeploy as a new version');
+    const rebuilt=rebuildFromSheet(j).filter(x=>!DB.rounds.some(y=>y.id===x.id));
+    if(!rebuilt.length){toast(j.holes.length?'Everything in the sheet is already in the app':'No hole rows found in the Holes tab');return}
+    if(!confirm(`Found ${rebuilt.length} round${rebuilt.length>1?'s':''} in the sheet. Add ${rebuilt.length>1?'them':'it'} to this phone?`))return;
+    coursesFromRounds(rebuilt);
+    DB.rounds.push(...rebuilt);save();
+    toast(`Restored ${rebuilt.length} round${rebuilt.length>1?'s':''}`);go('rounds');
+  }catch(e){toast('Restore failed: '+(e.message||e))}
+  finally{restoring=false;if(view==='settings')render()}
+}
 
 /* ===================== sample data ===================== */
 function loadSamples(){
