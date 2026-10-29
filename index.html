@@ -156,6 +156,8 @@ th:first-child,td:first-child{text-align:left}
 .kpad button{min-height:52px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:22px;font-weight:600}
 .kpad button:active{background:#ECEEEA}
 .tscroll tr[onclick]{cursor:pointer}
+.split{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;background:#EEF0EC}
+.split span{display:block;min-width:3px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1171,17 +1173,132 @@ function pCbCancel(){pCbDraft().kp={f:'c',c:'',o:'',edit:null,t:null};save();ren
 function pCbDel(i){const e=pCbDraft();if(!confirm('Delete shot '+(i+1)+'?'))return;e.shots.splice(i,1);e.kp={f:'c',c:'',o:'',edit:null,t:null};save();render()}
 function pCbUndo(){const e=pCbDraft(),d=DR(e.k);const s=e.shots.pop();if(s&&d.plan.random)e.nextT=s.t;e.kp={f:'c',c:'',o:'',edit:null,t:null};save();render()}
 
+
+/* ---- practice stats ---- */
+const PSC={good:'#1F6B3E',heel:'#B23A3A',toe:'#A8701A',left:'#A8701A',right:'#B23A3A',miss:'#C9CEC8'};
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+function shiftDate(d,n){const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)}
+function psSessions(){const loc=sub.psloc||'All',per=sub.psper||'90',cut=per==='All'?'':shiftDate(today(),-(+per));
+ return DB.practice.filter(s=>(loc==='All'||s.location===loc)&&(!cut||s.date>=cut))}
+function psEntries(ss){const out=[];ss.forEach(s=>s.drills.forEach(x=>out.push({...x,date:s.date,loc:s.location,ts:s.createdAt||0})));
+ return out.sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts)}
+function outCounts(x,d){if(x.balls&&x.balls.length){const c={};x.balls.forEach(b=>c[b]=(c[b]||0)+1);return c}
+ if(!x.brk||!d.out)return null;const c={};let any=false;
+ x.brk.split(' · ').forEach(part=>{const i=part.lastIndexOf(' '),lab=part.slice(0,i),v=+part.slice(i+1),o=d.out.find(o=>o[1]===lab);if(o&&!isNaN(v)){c[o[0]]=v;any=true}});
+ return any?c:null}
+function psCounts(es,d){const c={};d.out.forEach(o=>c[o[0]]=0);let n=0;
+ es.forEach(x=>{const oc=outCounts(x,d);if(oc)Object.keys(oc).forEach(k=>{if(c[k]!=null){c[k]+=oc[k];n+=oc[k]}})});return n?{c,n}:null}
+function psRate(es){let a=0,m=0;es.forEach(x=>{if(x.score!=null&&x.max){a+=x.score;m+=x.max}});return m?{a,m}:null}
+function psShots(x){const d=DR(x.k)||{};if(x.shots&&x.shots.length)return x.shots.length;if(x.balls&&x.balls.length)return x.balls.length;
+ if(d.type==='count'&&x.max)return x.max;if((d.type==='ladder'||d.type==='closeout')&&x.score)return x.score;return 0}
+function splitBar(parts){const n=parts.reduce((a,p)=>a+p[1],0);if(!n)return '<div class="sub">–</div>';
+ return `<div class="split">${parts.filter(p=>p[1]).map(p=>`<span style="flex:${p[1]};background:${p[2]}"></span>`).join('')}</div>
+ <div class="row between" style="font-size:12px;margin-top:4px;flex-wrap:wrap;gap:4px 10px">${parts.map(p=>`<span><b class="num" style="font-size:14px">${pct(p[1],n)}</b> <span class="sub">${p[0]}</span></span>`).join('')}</div>`}
+function psSplit(es,d,colors){const C=psCounts(es,d);if(!C)return '';return splitBar(d.out.map(o=>[o[1],C.c[o[0]],colors[o[0]]||(o[2]?PSC.good:PSC.miss)]))}
+function psRow(title,meta,body,k){return `<div style="padding:10px 0;border-top:1px solid var(--line)"${k?` onclick="sub.pdrill='${k}';render();window.scrollTo(0,0)"`:''}>
+ <div class="row between" style="margin-bottom:6px"><b>${title}</b><span class="sub" style="font-size:12px">${meta||''}${k?' ›':''}</span></div>${body}</div>`}
+function psSection(title,rows){const r=rows.filter(Boolean);return r.length?`<h2>${title}</h2><div class="card" style="padding:0 14px 4px">${r.join('').replace('border-top:1px solid var(--line)','border-top:0')}</div>`:''}
+function psN(es){return es.length+' session'+(es.length===1?'':'s')}
+function psRateRow(E,k,label){const es=E.filter(x=>x.k===k);const R=psRate(es);if(!R)return '';const d=DR(k);
+ const v=es.filter(x=>x.score!=null).map(x=>x.score);
+ return psRow(label||d.name,psN(es),`<div class="row" style="gap:16px;align-items:baseline"><span><b class="num" style="font-size:24px">${pct(R.a,R.m)}</b> <span class="sub">${esc(d.score.toLowerCase())}</span></span><span class="sub">avg ${fx(mean(v))}/${d.balls} · best ${Math.max(...v)}/${d.balls}</span>${pSpark(d,es)}</div>`,k)}
+function psHeel(es,d){const pts=es.map(x=>{const c=outCounts(x,d);if(!c)return null;const n=Object.values(c).reduce((a,b)=>a+b,0);return n?(c.heel||0)/n*100:null}).filter(v=>v!=null);
+ if(pts.length<2)return '';return `<p class="sub" style="font-size:12px;margin:6px 0 0">Heel strikes by session: ${pts.slice(-8).map(v=>Math.round(v)+'%').join(' → ')}</p>`}
+function psStatAvg(es,name){const v=es.map(x=>{const t=(x.stats||[]).find(t=>t[0]===name);return t&&t[1]!==''&&t[1]!=null?+t[1]:null}).filter(v=>v!=null&&!isNaN(v));return v.length?mean(v):null}
+function psWeeks(ss){const wk=d=>{const t=new Date(d+'T12:00:00');t.setDate(t.getDate()-(t.getDay()+6)%7);return t.toISOString().slice(0,10)};
+ const start=wk(today()),weeks=[];for(let i=11;i>=0;i--)weeks.push(shiftDate(start,-7*i));
+ const by={};ss.forEach(s=>{const w=wk(s.date),o=by[w]||(by[w]={Sim:0,Outside:0});o[s.location==='Outside'?'Outside':'Sim']++});
+ const mx=Math.max(2,...weeks.map(w=>by[w]?by[w].Sim+by[w].Outside:0));
+ const W=320,H=118,pl=4,pb=18,pt=14,bw=(W-pl*2)/12;const y=v=>(H-pb-pt)*v/mx;
+ const bars=weeks.map((w,i)=>{const o=by[w]||{Sim:0,Outside:0},x=pl+i*bw+3,ws=bw-6;const hs=y(o.Sim),ho=y(o.Outside);
+  return `<rect x="${x.toFixed(1)}" y="${(H-pb-hs).toFixed(1)}" width="${ws.toFixed(1)}" height="${hs.toFixed(1)}" rx="2" fill="#A8701A"/><rect x="${x.toFixed(1)}" y="${(H-pb-hs-ho).toFixed(1)}" width="${ws.toFixed(1)}" height="${ho.toFixed(1)}" rx="2" fill="#2E7A45"/>${o.Sim+o.Outside?`<text x="${(x+ws/2).toFixed(1)}" y="${(H-pb-hs-ho-3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#6B7770">${o.Sim+o.Outside}</text>`:''}${i%3===0?`<text x="${(x+ws/2).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="middle" fill="#6B7770">${new Date(w+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})}</text>`:''}`}).join('');
+ return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><line x1="0" x2="${W}" y1="${H-pb}" y2="${H-pb}" stroke="#E4E7E2"/>${bars}</svg><div class="sub" style="font-size:12px;margin-top:6px"><span class="dot wait"></span> simulator &nbsp; <span class="dot ok"></span> outside · sessions per week, last 12 weeks</div>`}
+function psTrendMark(d,es){const v=es.filter(x=>x.score!=null).map(x=>pVal(d,x));if(v.length<4)return '<span class="sub">–</span>';
+ const k=Math.min(3,Math.floor(v.length/2)),diff=mean(v.slice(-k))-mean(v.slice(-2*k,-k));if(Math.abs(diff)<0.05)return '<span class="sub">even</span>';
+ const better=d.lower?diff<0:diff>0;return `<span style="color:${better?'var(--green)':'var(--red)'};font-weight:700">${better?'▲':'▼'} ${fx(Math.abs(diff))}</span>`}
+function vPStats(){const loc=sub.psloc||'All',per=sub.psper||'90';
+ const ss=psSessions(),E=psEntries(ss),of=k=>E.filter(x=>x.k===k);
+ const head=`${pTopSeg('stats')}
+ <div class="seg" style="margin-bottom:8px">${[['All','All'],['Sim','Simulator'],['Outside','Outside']].map(([v,l])=>`<button class="${loc===v?'on':''}" onclick="sub.psloc='${v}';render()">${l}</button>`).join('')}</div>
+ <div class="chips" style="margin-bottom:12px">${[['30','30 days'],['90','90 days'],['365','12 months'],['All','All time']].map(([v,l])=>`<button class="${per===v?'on':''}" onclick="sub.psper='${v}';render()">${l}</button>`).join('')}</div>`;
+ const all=DB.practice.filter(s=>loc==='All'||s.location===loc);
+ if(!ss.length)return head+`<div class="card empty" style="padding:18px">No ${loc==='All'?'':PLOC[loc].toLowerCase()+' '}practice ${per==='All'?'yet':'in this period'}. ${all.length?'Try a longer period.':'Start a session under Log and your stats build from there.'}</div>${all.length?`<h2>Practice volume</h2><div class="card" style="padding:10px">${psWeeks(all)}</div>`:''}`;
+ const days=new Set(ss.map(s=>s.date)).size,shots=E.reduce((a,x)=>a+psShots(x),0);
+ const lastD=ss.reduce((a,s)=>s.date>a?s.date:a,''),ds=daysSince(lastD);
+ const cats=PCATS.map(([c,l])=>[l,E.filter(x=>x.cat===c).length]).filter(c=>c[1]);const cmax=Math.max(...cats.map(c=>c[1]));
+ // driver
+ const ff=of('dr-ff'),ffS=ff.filter(x=>x.score!=null);
+ const ffBody=ffS.length?`<div class="row" style="gap:16px;align-items:baseline"><span><b class="num" style="font-size:24px">${fx(mean(ffS.map(x=>x.score)))}</b><span class="sub">/14 avg</span></span><span class="sub">benchmark (10+) in ${ffS.filter(x=>x.score>=10).length} of ${ffS.length}</span>${pSpark(DR('dr-ff'),ff)}</div><div style="margin-top:8px">${psSplit(ff,DR('dr-ff'),{left:PSC.left,right:PSC.right})}</div>`:'';
+ const cal=of('dr-cal'),calR=psRate(cal);
+ const calStats=['Path','Face to path','Smash factor'].map(n=>[n,psStatAvg(cal,n)]).filter(t=>t[1]!=null);
+ const close=of('dr-close').filter(x=>x.score!=null);
+ const driver=[
+  ffBody&&psRow('Fairway Finder',psN(ff),ffBody,'dr-ff'),
+  of('dr-strike').length&&psRow('Strike',psN(of('dr-strike')),psSplit(of('dr-strike'),DR('dr-strike'),{heel:PSC.heel,toe:PSC.toe})+psHeel(of('dr-strike'),DR('dr-strike')),'dr-strike'),
+  of('dr-gate').length&&psRow('Start line',psN(of('dr-gate')),psSplit(of('dr-gate'),DR('dr-gate'),{left:PSC.left,right:PSC.right}),'dr-gate'),
+  calR&&psRow('Calibrate',psN(cal),`<div><b class="num" style="font-size:20px">${pct(calR.a,calR.m)}</b> <span class="sub">in the face-to-path window</span></div>${calStats.length?`<p class="sub" style="font-size:12px;margin:4px 0 0">Averages: ${calStats.map(t=>t[0].toLowerCase()+' '+(t[0]==='Smash factor'?t[1].toFixed(2):fSgn(t[1])+'°')).join(' · ')}</p>`:''}`,'dr-cal'),
+  close.length&&psRow('Close-out',psN(close),`<div><b class="num" style="font-size:20px">${fx(mean(close.map(x=>x.score)))}</b> <span class="sub">balls on average · best ${Math.min(...close.map(x=>x.score))}</span></div>`,'dr-close')];
+ // combines
+ const cks=['cb-full','cb-wedge','cb-long','cb-one','cb-ladder','cb-scramble'].filter(k=>of(k).some(x=>x.score!=null));
+ const cbRows=cks.map(k=>{const d=DR(k),es=of(k).filter(x=>x.score!=null),v=es.map(x=>x.score),last=v[v.length-1],prev=v.length>1?v[v.length-2]:null;
+  const ch=prev==null?'':(()=>{const df=last-prev,better=d.lower?df<0:df>0;return Math.abs(df)<0.05?'<span class="sub">even</span>':`<span style="color:${better?'var(--green)':'var(--red)'}">${df>0?'+':'−'}${fx(Math.abs(df))}</span>`})();
+  return `<tr onclick="sub.pdrill='${k}';render();window.scrollTo(0,0)"><td style="text-align:left"><b>${d.name.replace(' Combine','')}</b></td><td>${es.length}</td><td>${pFmt(es[es.length-1])}</td><td>${pFmt(es.reduce((a,x)=>(d.lower?x.score<a.score:x.score>a.score)?x:a))}</td><td>${fx(mean(v))}</td><td>${ch}</td></tr>`}).join('');
+ const cshots=E.filter(x=>x.shots&&x.shots.length).flatMap(x=>x.shots);
+ const fullD=pLastDate('cb-full');
+ // irons, outdoor, putting
+ const setup=of('sim-setup'),phase=x=>x.phase||(/^(Before|After)/.exec(x.brk||'')||[])[1]||'';
+ const lastOf=p=>[...setup].reverse().find(x=>phase(x)===p);const sb=lastOf('Before'),sa=lastOf('After');
+ const sv=(x,n)=>{const t=x&&(x.stats||[]).find(t=>t[0]===n);return t&&t[1]!==''&&t[1]!=null?esc(t[1]):'–'};
+ const ladder=of('cb-ladder').filter(x=>x.score!=null);
+ const irons=[psRateRow(E,'sim-face'),
+  (sb||sa)&&psRow('Setup check','latest before and after',`<div class="tscroll"><table><tr><th style="text-align:left"></th>${['Attack angle','Low point','Dynamic loft'].map(n=>`<th>${n}</th>`).join('')}</tr>${[['Before',sb],['After',sa]].filter(r=>r[1]).map(([l,x])=>`<tr><td style="text-align:left"><b>${l}</b> <span class="sub">${x.date.slice(5)}</span></td>${['Attack angle','Low point','Dynamic loft'].map(n=>`<td>${sv(x,n)}</td>`).join('')}</tr>`).join('')}</table></div>`,'sim-setup'),
+  psRateRow(E,'out-gate','Gate start line'),psRateRow(E,'out-towel','Towel low point'),
+  of('out-spray').length&&psRow('Foot spray strike',psN(of('out-spray')),psSplit(of('out-spray'),DR('out-spray'),{heel:PSC.heel,toe:PSC.toe})+psHeel(of('out-spray'),DR('out-spray')),'out-spray'),
+  (()=>{const es=of('out-par3').filter(x=>x.score!=null);return es.length&&psRow('Par-3 Game',psN(es),`<div><b class="num" style="font-size:20px">${fmtPar(Math.round(mean(es.map(x=>x.score-x.max))*10)/10)}</b> <span class="sub">average to par · best ${fmtPar(Math.min(...es.map(x=>x.score-x.max)))}</span></div>`,'out-par3')})()];
+ const lag=of('pt-lag'),lagD=DR('pt-lag'),lagBy={};
+ lag.forEach(x=>(x.balls||[]).forEach((b,i)=>{const l=lagD.labels[i];if(!l)return;const o=lagBy[l]||(lagBy[l]={n:0,in:0});o.n++;if(b==='in')o.in++}));
+ const lagR=psRate(lag);
+ const circ=of('pt-circle').filter(x=>x.score!=null),p18=of('pt-par18').filter(x=>x.score!=null);
+ const putting=[psRateRow(E,'pt-gate','Gate drill (6 ft)'),
+  lagR&&psRow('Lag ladder',psN(lag),`<div><b class="num" style="font-size:20px">${pct(lagR.a,lagR.m)}</b> <span class="sub">finish inside 3 ft</span></div>${Object.keys(lagBy).length?`<p class="sub" style="font-size:12px;margin:4px 0 0">${Object.keys(lagBy).map(l=>`${l}: ${pct(lagBy[l].in,lagBy[l].n)}`).join(' · ')}</p>`:''}`,'pt-lag'),
+  circ.length&&psRow('Circle drill',psN(circ),`<div><b class="num" style="font-size:20px">${Math.max(...circ.map(x=>x.score))}</b> <span class="sub">best streak · average best ${fx(mean(circ.map(x=>x.score)))}</span></div>`,'pt-circle'),
+  p18.length&&psRow('Par 18',psN(p18),`<div><b class="num" style="font-size:20px">${fmtPar(Math.round(mean(p18.map(x=>x.score-x.max))*10)/10)}</b> <span class="sub">average to par · best ${fmtPar(Math.min(...p18.map(x=>x.score-x.max)))}</span></div>`,'pt-par18')];
+ const used=DRILLS.filter(d=>of(d.k).some(x=>x.score!=null));
+ return head+`
+ <div class="kpis">
+  <div class="kpi"><b class="num">${ss.length}</b><span>sessions</span></div>
+  <div class="kpi"><b class="num">${days}</b><span>days practiced</span></div>
+  <div class="kpi"><b class="num">${shots}</b><span>shots logged</span></div>
+  <div class="kpi"><b class="num">${E.length}</b><span>drills done</span></div>
+  <div class="kpi"><b class="num">${ds===0?'Today':ds===1?'1 day':ds+' days'}</b><span>${ds>1?'since last session':'last session'}</span></div>
+  <div class="kpi"><b class="num">${!fullD?'–':daysSince(fullD)===0?'Today':daysSince(fullD)+' days'}</b><span>${fullD&&daysSince(fullD)===0?'Full Combine':'since Full Combine'}</span></div>
+ </div>
+ <h2>Practice volume</h2><div class="card" style="padding:10px">${psWeeks(DB.practice.filter(s=>loc==='All'||s.location===loc))}</div>
+ <h2>Where the time goes</h2><div class="card" style="padding:10px 14px">${cats.map(([l,n])=>`<div class="row" style="gap:10px;margin:5px 0"><span style="width:104px;font-size:14px">${l}</span><div class="grow" style="background:#EEF0EC;border-radius:4px;height:10px"><div style="width:${(n/cmax*100).toFixed(0)}%;background:var(--ink);height:10px;border-radius:4px"></div></div><b class="num" style="width:26px;text-align:right">${n}</b></div>`).join('')}</div>
+ ${psSection('Driver',driver)}
+ ${cbRows?`<h2>Combines</h2><div class="card tscroll" style="padding:6px 10px"><table><tr><th style="text-align:left">Drill</th><th>Done</th><th>Last</th><th>Best</th><th>Avg</th><th>Change</th></tr>${cbRows}</table>
+  <p class="sub" style="font-size:12px;margin:6px 0 2px">Change is the last one against the one before. Ladder and Scramble are lower-is-better.</p></div>`:''}
+ ${cshots.length?`<h2>Combine shots by target <span class="sub" style="font-weight:400">${cshots.length} shots</span></h2>${cbTable(cshots)}`:''}
+ ${psSection('Irons and strike',irons)}
+ ${psSection('Putting',putting)}
+ ${used.length?`<h2>Every drill <span class="sub" style="font-weight:400">recent trend</span></h2><div class="card tscroll" style="padding:6px 10px"><table><tr><th style="text-align:left">Drill</th><th>Done</th><th>Avg</th><th>Best</th><th>Trend</th></tr>
+  ${used.map(d=>{const es=of(d.k).filter(x=>x.score!=null),S=pStats(d,es);return `<tr onclick="sub.pdrill='${d.k}';render();window.scrollTo(0,0)"><td style="text-align:left"><b>${d.name}</b></td><td>${es.length}</td><td>${pAvgTxt(d,{avg5:mean(es.map(x=>pVal(d,x)))})}</td><td>${pFmt(S.best)}</td><td>${psTrendMark(d,es)}</td></tr>`}).join('')}</table>
+  <p class="sub" style="font-size:12px;margin:6px 0 2px">Trend compares your last 3 against the 3 before, so ▲ always means better. Tap a drill for its full history.</p></div>`:''}`}
+function pTopSeg(v){const ap=DB.activePractice;return `<div class="row between"><h1>Practice</h1>${v!=='stats'&&pPendingCount()?`<button class="btn small green" ${psyncing?'disabled':''} onclick="pSyncAll()">${psyncing?'<span class="spin"></span>Pushing…':'Push '+pPendingCount()+' to Sheets'}</button>`:''}</div>
+ <div class="seg" style="margin-bottom:12px"><button class="${v!=='stats'?'on':''}" onclick="sub.pview=null;sub.pdrill=null;render()">${ap?'Session':'Log'}</button><button class="${v==='stats'?'on':''}" onclick="sub.pview='stats';sub.pdrill=null;sub.psess=null;render();window.scrollTo(0,0)">Stats</button></div>`}
+
 /* ---- views ---- */
 function vPractice(){const ap=DB.activePractice;
  if(ap&&ap.draft&&DR(ap.draft.k))return vDrillLog();
  if(sub.pdrill)return vDrillHist(sub.pdrill);
+ if(sub.pview==='stats')return vPStats();
  if(sub.psess){const s=DB.practice.find(x=>x.id===sub.psess);if(s)return vPSession(s)}
  if(ap)return vPActive();
  return vPHome()}
 function pPendingCount(){return DB.practice.filter(s=>!s.pushed).length}
 function vPHome(){const f=sub.pform||(sub.pform={date:today(),loc:'Sim'});const pend=pPendingCount();
  const ss=[...DB.practice].sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)).slice(0,20);
- return `<div class="row between"><h1>Practice</h1>${pend?`<button class="btn small green" ${psyncing?'disabled':''} onclick="pSyncAll()">${psyncing?'<span class="spin"></span>Pushing…':'Push '+pend+' to Sheets'}</button>`:''}</div>
+ return `${pTopSeg('log')}
  <div class="card"><label class="f" style="margin-top:0">Where</label>
  <div class="seg"><button class="${f.loc==='Sim'?'on':''}" onclick="sub.pform.loc='Sim';render()">Simulator</button><button class="${f.loc==='Outside'?'on':''}" onclick="sub.pform.loc='Outside';render()">Outside</button></div>
  <label class="f">Date</label><input class="in" type="date" value="${f.date}" onchange="sub.pform.date=this.value"></div>
@@ -1201,8 +1318,8 @@ function pDrillList(active){const cat=sub.pcat||(sub.pcat=(active&&DB.activePrac
    :`<button class="item" onclick="sub.pdrill='${d.k}';render();window.scrollTo(0,0)"><div class="grow">${label}</div>${pSpark(d,h)}<span class="sub">›</span></button>`}).join('')}</div>`}
 function pDetail(x){return [x.brk,...(x.stats||[]).filter(t=>t[1]!==''&&t[1]!=null).map(t=>t[0]+' '+t[1]),x.notes].filter(Boolean).map(esc).join(' · ')}
 function vPActive(){const ap=DB.activePractice;
- return `<div class="row between" style="margin-bottom:6px"><div class="sub">${ap.date} <span class="badge ${ap.location==='Sim'?'sim':'real'}">${PLOC[ap.location]}</span></div><button class="btn small" onclick="pFinishSheet()">Finish</button></div>
- <h1>Practice session</h1>
+ return `${pTopSeg('log')}
+ <div class="row between" style="margin-bottom:10px"><div><div style="font-weight:700;font-size:18px">Session in progress</div><div class="sub">${ap.date} <span class="badge ${ap.location==='Sim'?'sim':'real'}">${PLOC[ap.location]}</span></div></div><button class="btn small" onclick="pFinishSheet()">Finish</button></div>
  ${ap.drills.length?`<div class="card list" style="padding:0 14px">${ap.drills.map((x,i)=>`<div class="item"><div class="grow"><div style="font-weight:600">${esc(x.name)}</div><div class="sub">${pDetail(x)}</div></div><b class="num" style="font-size:18px;white-space:nowrap">${pFmt(x)}</b><button style="min-width:36px;min-height:40px;color:var(--mute);font-size:20px" aria-label="Remove ${esc(x.name)}" onclick="pDelEntry(${i})">×</button></div>`).join('')}</div>`
   :`<div class="card empty" style="padding:18px">Pick a drill below. Each one logs a score you can track over time.</div>`}
  <h2>Add a drill</h2>${pDrillList(true)}`}
@@ -1273,7 +1390,7 @@ function vDrillHist(k){const d=DR(k);if(!d){sub.pdrill=null;return vPractice()}
   ${d.plan?(()=>{const w=h.filter(x=>x.shots&&x.shots.length).slice(-5);return w.length?`<h2>By target <span class="sub" style="font-weight:400">last ${w.length===1?'combine':w.length+' combines'}, ${w.reduce((a,x)=>a+x.shots.length,0)} shots</span></h2>${cbTable(w.flatMap(x=>x.shots))}`:''})():''}
   ${h.length?`<h2>History <span class="sub" style="font-weight:400">${h.length} logged</span></h2><div class="card tscroll" style="padding:6px 10px"><table><tr><th>Date</th><th>Score</th><th style="text-align:left;padding-left:10px">Detail</th></tr>
   ${rev.map(x=>`<tr><td>${x.date.slice(5)}</td><td>${pFmt(x)}</td><td style="text-align:left;white-space:normal;font-size:12px;color:var(--mute);padding-left:10px">${pDetail(x)}</td></tr>`).join('')}</table></div>`:''}`}
- return `<button class="btn small" onclick="sub.pdrill=null;render()">‹ ${DB.activePractice?'Session':'Practice'}</button>
+ return `<button class="btn small" onclick="sub.pdrill=null;render()">‹ ${sub.pview==='stats'?'Stats':DB.activePractice?'Session':'Practice'}</button>
  <h1 style="margin-top:12px">${d.name}</h1><p class="sub" style="margin:-8px 0 12px">${catName(d.cat)}${d.club?' · '+esc(d.club):''}. ${esc(d.what)}</p>
  ${body}
  <p class="sub" style="font-size:12px">Score: ${esc(d.score)}</p>
