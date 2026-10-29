@@ -133,6 +133,29 @@ th:first-child,td:first-child{text-align:left}
 .strip button.cur{border:2px solid var(--ink)}
 .strip .mark{width:22px;height:22px;font-size:13px}
 .scoretbl .mark{width:24px;height:24px;font-size:13px}
+/* practice */
+.pbtns{display:grid;gap:8px;margin:12px 0 10px}
+.pbtns button{min-height:76px;border-radius:10px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:17px;padding:0 4px;line-height:1.15}
+.pbtns button.good{background:var(--green-soft);border-color:var(--green);color:var(--green)}
+.pbtns button:active{transform:scale(.97)}
+.pbtns button:disabled{opacity:.4}
+.balls{display:flex;flex-wrap:wrap;gap:6px}
+.balls span{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;line-height:1}
+.balls span.g{background:var(--green);border-color:var(--green);color:#fff}
+.balls span.r{background:var(--red-soft);border-color:var(--red);color:var(--red)}
+.balls span.cur{border-color:var(--ink);border-width:2px}
+.rungs{display:flex;flex-wrap:wrap;gap:5px}
+.rungs span{min-width:40px;padding:6px 0;text-align:center;border-radius:6px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+.rungs span.g{background:var(--green);border-color:var(--green);color:#fff}
+.rungs span.cur{border:2px solid var(--ink)}
+.kfields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kfield{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;text-align:left}
+.kfield b{font-size:30px;line-height:1.1;font-weight:800}
+.kfield.on{border:2px solid var(--ink)}
+.kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.kpad button{min-height:52px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:22px;font-weight:600}
+.kpad button:active{background:#ECEEEA}
+.tscroll tr[onclick]{cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -149,9 +172,9 @@ const LIES=['Tee','Fairway','Rough','Sand','Fringe','Recovery'];
 const STRIKES=['Center','Heel','Toe','Thin','Fat'];
 const isDriver=k=>/^(dr|drv|driver|1w)$/i.test(String(k||'').trim());
 const strikesFor=k=>isDriver(k)?[...STRIKES,'High']:STRIKES;
-let DB={rounds:[],courses:[],players:[],games:[],active:null,activeGame:null,settings:{clubs:DEF_CLUBS.slice(),sheetUrl:'',defaultMode:'shots',defaultType:'Real'}};
+let DB={rounds:[],courses:[],players:[],games:[],practice:[],active:null,activeGame:null,activePractice:null,settings:{clubs:DEF_CLUBS.slice(),sheetUrl:'',defaultMode:'shots',defaultType:'Real'}};
 function load(){try{const s=localStorage.getItem(K);if(s){const d=JSON.parse(s);DB={...DB,...d,settings:{...DB.settings,...(d.settings||{})}}}}catch(e){}
-  DB.courses=(DB.courses||[]).map(migrateCourse);DB.players=DB.players||[];DB.games=DB.games||[]}
+  DB.courses=(DB.courses||[]).map(migrateCourse);DB.players=DB.players||[];DB.games=DB.games||[];DB.practice=DB.practice||[]}
 /* old shape: {name, rating, slope, holes:[{par,yds}]}  →  new: {name, pars:[18], tees:[{id,name,rating,slope,yds:[18]}]} */
 function migrateCourse(c){if(c.tees)return c;
   const m=/^(.*?)\s+[–-]\s+(.+)$/.exec(c.name||'');const name=m?m[1]:c.name,tee=m?m[2]:'Default';
@@ -231,13 +254,14 @@ const ICONS={
   rounds:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
   stats:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
   courses:'<svg viewBox="0 0 24 24"><path d="M12 22s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  practice:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>',
   games:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg>',
   settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'};
 function go(v,s={}){view=v;sub=s;render();window.scrollTo(0,0)}
 function render(){
-  document.getElementById('tabs').innerHTML=['play','rounds','games','stats','courses','settings'].map(v=>`<button class="${view===v?'on':''}" onclick="go('${v}')">${ICONS[v]}<span>${v[0].toUpperCase()+v.slice(1)}</span></button>`).join('');
+  document.getElementById('tabs').innerHTML=['play','rounds','practice','games','stats','courses','settings'].map(v=>`<button class="${view===v?'on':''}" onclick="go('${v}')">${ICONS[v]}<span>${v[0].toUpperCase()+v.slice(1)}</span></button>`).join('');
   const app=document.getElementById('app');
-  app.innerHTML=({play:vPlay,rounds:vRounds,games:vGames,stats:vStats,courses:vCourses,settings:vSettings})[view]();
+  app.innerHTML=({play:vPlay,rounds:vRounds,practice:vPractice,games:vGames,stats:vStats,courses:vCourses,settings:vSettings})[view]();
 }
 
 /* ===================== PLAY ===================== */
@@ -435,7 +459,7 @@ async function pushRound(r,quiet){
 async function syncAll(quiet){if(syncing)return;syncing=true;let n=0;render();
   try{for(const r of DB.rounds.filter(x=>!x.pushed)){if(await pushRound(r,true))n++;else break}}finally{syncing=false}
   if(n||!quiet)toast(n?`Pushed ${n} round${n>1?'s':''}`:'Nothing pushed — check signal or Settings')}
-let onlineT;window.addEventListener('online',()=>{clearTimeout(onlineT);onlineT=setTimeout(()=>{if(pendingCount()&&DB.settings.sheetUrl)syncAll(true)},4000)});
+let onlineT;window.addEventListener('online',()=>{clearTimeout(onlineT);onlineT=setTimeout(async()=>{if(!DB.settings.sheetUrl)return;if(pendingCount())await syncAll(true);if(DB.practice.some(s=>!s.pushed))pSyncAll(true)},4000)});
 function copyCSV(id){const p=payload(DB.rounds.find(x=>x.id===id));
   const line=o=>Object.values(o).map(v=>/[",\n]/.test(String(v))?'"'+String(v).replace(/"/g,'""')+'"':v).join(',');
   const blk=(name,rows)=>rows.length?`# ${name}\n${Object.keys(rows[0]).join(',')}\n${rows.map(line).join('\n')}\n`:'';
@@ -957,12 +981,400 @@ function vRules(){
   <p class="sub" style="margin:8px 0">These stack on top of any of the games above.</p></div>`;
 }
 
+/* ===================== PRACTICE ===================== */
+/* Drills come from the Golf Training Program doc. Every drill logs one score; sim drills can add TrackMan stats. */
+const PCATS=[['driver','Driver routine'],['combine','Combines'],['sim','Sim drills'],['outdoor','Outdoor'],['putting','Putting']];
+const PLOC={Sim:'Simulator',Outside:'Outside'};
+const MM=[['miss','Miss',0],['make','Make',1]];
+const T10=[60,70,80,90,100,120,140,160,180,'Dr'];
+const DRILLS=[
+{k:'dr-cal',cat:'driver',name:'Calibrate',loc:'Sim',type:'count',balls:5,club:'Driver',out:[['out','Outside window',0],['in','In window',1]],
+ what:'Hit your stock pull-cut. A ball counts when face-to-path stays open, about +1° to +3°, with path around −2°.',score:'Balls in the face-to-path window',stats:['Path','Face to path','Smash factor']},
+{k:'dr-strike',cat:'driver',name:'Strike Check',loc:'Sim',type:'count',balls:10,club:'Driver',out:[['heel','Heel',0,'H'],['center','Center',1,'C'],['toe','Toe',1,'T']],
+ what:'Foot spray on the face. Tap where each ball came off.',score:'Centered or toe-side strikes'},
+{k:'dr-gate',cat:'driver',name:'Start-Line Gate',loc:'Sim',type:'count',balls:10,club:'Driver',out:[['left','Over 4° left',0,'L'],['in','0° to 4° left',1,'✓'],['right','Right of 0°',0,'R']],
+ what:'The ball must start between 0° and 4° left.',score:'Shots inside the start window'},
+{k:'dr-ff',cat:'driver',name:'Fairway Finder',loc:'Sim',type:'count',balls:14,club:'Driver',out:[['left','Miss left',0,'L'],['fw','Fairway',1,'✓'],['right','Miss right',0,'R']],
+ what:'Sim course with a 30-yard fairway. Full pre-shot routine every ball.',score:'Fairways hit',stats:['Side dispersion (yds)'],bench:10},
+{k:'dr-close',cat:'driver',name:'Close-out',loc:'Sim',type:'closeout',need:3,lower:true,club:'Driver',
+ what:'Hit 3 fairways in a row to finish. A miss restarts the count.',score:'Balls needed (lower is better)'},
+{k:'cb-full',cat:'combine',name:'Full Combine',loc:'Sim',type:'number',max:100,plan:{t:T10,per:3,rounds:2},
+ what:'All 10 targets (60–180 yds and Driver), 3 balls per target, 2 rounds, 60 shots. Run it every 2–4 weeks as a baseline, not as practice.',score:'TrackMan combine score'},
+{k:'cb-wedge',cat:'combine',name:'Wedge Combine',loc:'Sim',type:'number',max:100,plan:{t:[60,70,80,90,100],per:6,rounds:2},what:'60, 70, 80, 90 and 100 yds, 6 balls per target, 2 rounds, 60 shots.',score:'TrackMan score'},
+{k:'cb-long',cat:'combine',name:'Long Combine',loc:'Sim',type:'number',max:100,plan:{t:[120,140,160,180,'Dr'],per:6,rounds:2},what:'120, 140, 160, 180 yds and Driver, 6 balls per target, 2 rounds, 60 shots.',score:'TrackMan score'},
+{k:'cb-one',cat:'combine',name:'One-Ball Combine',loc:'Sim',type:'number',max:100,plan:{t:T10,per:1,rounds:3},what:'All 10 targets, 1 ball per target, 3 rounds, no rehits, 30 shots.',score:'TrackMan score'},
+{k:'cb-ladder',cat:'combine',name:'Ladder',loc:'Sim',type:'ladder',rungs:[60,70,80,90,100,120,140,160,180],lower:true,
+ what:'Work up from 60 to 180. The ball must land within 10% of the distance to move up a rung.',score:'Total balls to finish (lower is better)'},
+{k:'cb-scramble',cat:'combine',name:'Scramble',loc:'Sim',type:'number',lower:true,unit:'ft',plan:{t:T10,random:true},
+ what:'Practice mode with all 10 targets in random order, never the same target twice in a row. Log each shot and the average proximity is worked out for you.',score:'Average proximity in feet, Driver excluded (lower is better)'},
+{k:'sim-face',cat:'sim',name:'Face Window',loc:'Sim',type:'count',balls:10,club:'Mid-iron',out:[['out','Outside ±1.5°',0],['in','Within ±1.5°',1]],
+ what:'Read face-to-target after each ball.',score:'Shots with face-to-target within ±1.5°',stats:['Face to target']},
+{k:'sim-setup',cat:'sim',name:'Setup Check',loc:'Sim',type:'stats',club:'Irons',
+ what:'10 balls. Log the numbers before and after a setup change, like ball position or hands at address.',score:'No score. Compare before and after',stats:['Attack angle','Low point','Dynamic loft']},
+{k:'sim-gap',cat:'sim',name:'Gapping Audit',loc:'Sim',type:'gapping',club:'Every club',what:'5 balls per club. Log the average carry and spin for each.',score:'No score. Monthly reference'},
+{k:'out-spray',cat:'outdoor',name:'Foot Spray Strike',loc:'Outside',type:'count',balls:10,out:[['heel','Heel',0,'H'],['center','Center',1,'C'],['toe','Toe',0,'T']],
+ what:'Foot spray on the face. Tap where each ball came off.',score:'Centered strikes'},
+{k:'out-gate',cat:'outdoor',name:'Gate Start Line',loc:'Outside',type:'count',balls:10,out:[['out','Missed gate',0],['in','Through gate',1]],
+ what:'Two alignment sticks 10 ft ahead.',score:'Balls through the gate'},
+{k:'out-towel',cat:'outdoor',name:'Towel Low Point',loc:'Outside',type:'count',balls:10,out:[['towel','Hit towel',0],['clean','Clean',1]],
+ what:'Towel 4 in behind the ball.',score:'Clean strikes'},
+{k:'out-par3',cat:'outdoor',name:'Par-3 Game',loc:'Outside',type:'holes',holes:9,par:3,lower:true,
+ what:'9 random yardages around a green, 1 ball each, played out. Tap your score on each hole.',score:'Score vs. par 27'},
+{k:'pt-gate',cat:'putting',name:'Gate Drill',loc:'Any',type:'count',balls:10,out:MM,what:'Tee gate, 6 ft.',score:'Makes'},
+{k:'pt-circle',cat:'putting',name:'Circle Drill',loc:'Any',type:'streak',dists:[3,4,5,6],
+ what:'Balls at 3, 4, 5 and 6 ft around the hole. Keep going until a miss, then start a new streak.',score:'Longest streak of makes'},
+{k:'pt-lag',cat:'putting',name:'Lag Ladder',loc:'Any',type:'count',balls:9,labels:['20 ft','20 ft','20 ft','30 ft','30 ft','30 ft','40 ft','40 ft','40 ft'],
+ out:[['out','Outside 3 ft',0],['in','Inside 3 ft',1]],what:'20, 30 and 40 ft, 3 balls each.',score:'Balls finishing within 3 ft'},
+{k:'pt-par18',cat:'putting',name:'Par 18',loc:'Any',type:'holes',holes:9,par:2,lower:true,what:'9 holes from 5 to 40 ft, played out.',score:'Score vs. 18'}
+];
+const ROUTINE=['dr-cal','dr-strike','dr-gate','dr-ff','dr-close'];
+const DR=k=>DRILLS.find(d=>d.k===k);
+const catName=c=>(PCATS.find(x=>x[0]===c)||[0,''])[1];
+function pNew(k){return {k,balls:[],stats:{},notes:'',num:null,gap:{},phase:null,target:null,shots:[],kp:null,nextT:null}}
+
+/* score for a drill in progress (or saved) */
+function pCalc(d,e){const b=e.balls||[],n=b.length;
+ switch(d.type){
+ case 'count':{const good=d.out.filter(o=>o[2]).map(o=>o[0]);const s=b.filter(x=>good.includes(x)).length;
+  return {score:n?s:null,max:d.balls,done:n>=d.balls,logged:n>0,brk:d.out.map(o=>o[1]+' '+b.filter(x=>x===o[0]).length).join(' · ')}}
+ case 'ladder':{const hits=b.filter(x=>x==='hit').length,done=hits>=d.rungs.length;
+  return {score:n||null,max:null,done,logged:n>0,hits,brk:done?`Finished ${d.rungs[0]}→${d.rungs[d.rungs.length-1]} in ${n} balls`:`Stopped at ${d.rungs[hits]} yds after ${n} balls`}}
+ case 'closeout':{let run=0;b.forEach(x=>run=x==='fw'?run+1:0);const done=run>=d.need;
+  return {score:n||null,max:null,done,logged:n>0,run,brk:`${b.filter(x=>x==='fw').length} of ${n} fairways${done?'':' · not finished'}`}}
+ case 'streak':{let run=0;const at=[];b.forEach(x=>{if(x==='make')run++;else{at.push(run);run=0}});const all=run?[...at,run]:at;
+  return {score:n?Math.max(0,...all):null,max:null,done:false,logged:n>0,run,at,brk:`${all.length} streak${all.length===1?'':'s'}: ${all.join(', ')}`}}
+ case 'holes':{const tot=b.reduce((a,v)=>a+v,0);
+  return {score:n?tot:null,max:n*d.par,done:n>=d.holes,logged:n>0,brk:n?`${n<d.holes?'Thru '+n+' · ':''}${b.join(' ')}`:''}}
+ case 'number':{const sh=e.shots||[];let v=e.num;if(d.lower&&d.plan&&sh.length){const S=cbSummary(sh);if(S)v=r1(S.prox)}
+  const ok=v!=null&&v!=='';return {score:ok?+v:null,max:d.max||null,done:true,logged:ok||sh.length>0,brk:sh.length?sh.length+' shot'+(sh.length===1?'':'s')+' logged':''}}
+ case 'stats':{const ok=(d.stats||[]).some(s=>e.stats[s]!==''&&e.stats[s]!=null);return {score:null,max:null,done:true,logged:ok,brk:e.phase?e.phase+' setup change':''}}
+ case 'gapping':{const cl=Object.keys(e.gap||{}).filter(c=>{const g=e.gap[c];return g&&(g.carry!=null||g.spin!=null)});
+  return {score:null,max:null,done:true,logged:cl.length>0,brk:cl.length+' club'+(cl.length===1?'':'s')}}
+ }return {score:null,logged:false}}
+function pFmt(x){if(x.score==null)return '–';const d=DR(x.k)||{};
+ if(d.type==='count'&&x.max)return x.score+'/'+x.max;
+ if(d.type==='holes'&&x.max)return x.score+' <span class="sub" style="font-size:.6em">'+fmtPar(x.score-x.max)+'</span>';
+ if(d.unit)return fx(x.score,1)+' '+d.unit;
+ return String(Math.round(x.score*10)/10)}
+
+/* history */
+function pHist(k){const out=[];DB.practice.forEach(s=>s.drills.forEach(x=>{if(x.k===k)out.push({...x,date:s.date,loc:s.location,sid:s.id,ts:s.createdAt||0})}));
+ return out.sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts)}
+function pStats(d,h){const v=h.filter(x=>x.score!=null);if(!v.length)return null;
+ const holes=d.type==='holes',val=x=>holes?x.score-x.max:x.score; // par games compare to par so 9-hole and partial games line up
+ const l5=v.slice(-5).map(val);
+ return {n:h.length,last:v[v.length-1],best:v.reduce((a,x)=>(d.lower?val(x)<val(a):val(x)>val(a))?x:a),avg5:l5.reduce((a,b)=>a+b,0)/l5.length,l5:v.slice(-5)}}
+function pAvgTxt(d,S){return d.type==='holes'?fmtPar(Math.round(S.avg5*10)/10):d.type==='count'?fx(S.avg5)+'/'+d.balls:fx(S.avg5)}
+function pSumLine(d,h){const S=pStats(d,h);if(!S)return h.length?`${h.length} logged`:'Not logged yet';
+ return `Last ${pFmt(S.last)} · best ${pFmt(S.best)} · last-5 avg ${pAvgTxt(d,S)}`}
+const pVal=(d,x)=>d.type==='holes'?x.score-x.max:x.score;
+function pSpark(d,h){const v=h.filter(x=>x.score!=null).slice(-10).map(x=>pVal(d,x));if(v.length<2)return '';
+ let mn=Math.min(...v),mx=Math.max(...v);if(d.type==='count'){mn=0;mx=d.balls}if(mx===mn){mx++;mn--}
+ const W=56,H=22,x=i=>2+i*(W-4)/(v.length-1),y=s=>{const t=(s-mn)/(mx-mn);return 2+(d.lower?t:1-t)*(H-4)};
+ return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex:none" aria-hidden="true"><path d="${v.map((s,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(s).toFixed(1)).join(' ')}" fill="none" stroke="#1F6B3E" stroke-width="1.6"/><circle cx="${x(v.length-1).toFixed(1)}" cy="${y(v[v.length-1]).toFixed(1)}" r="2.2" fill="#1F6B3E"/></svg>`}
+function pTrend(d,h){const pts=h.filter(x=>x.score!=null).slice(-20);
+ if(pts.length<2)return '<div class="sub" style="text-align:center;padding:14px">The trend shows after two sessions</div>';
+ const vs=pts.map(p=>pVal(d,p));let mn=Math.min(...vs),mx=Math.max(...vs);
+ if(d.bench!=null){mn=Math.min(mn,d.bench);mx=Math.max(mx,d.bench)}
+ if(d.type==='count'){mn=0;mx=d.balls}
+ if(mx-mn<2){mn-=1;mx+=1}
+ const W=320,H=130,pl=30,pr=8,pt=8,pb=18;
+ const x=i=>pl+i*(W-pl-pr)/(pts.length-1),y=v=>{const t=(v-mn)/(mx-mn);return pt+(d.lower?t:1-t)*(H-pt-pb)};
+ const ticks=d.type==='count'?(()=>{const st=Math.max(1,Math.ceil(d.balls/4)),t=[];for(let g=0;g<d.balls;g+=st)t.push(g);t.push(d.balls);return t})():[0,1,2,3,4].map(k=>mn+(mx-mn)*k/4);
+ const grid=[];for(const g of ticks){const lab=d.type==='holes'?fmtPar(Math.round(g)):String(Math.round(g*10)/10);
+  grid.push(`<line x1="${pl}" x2="${W-pr}" y1="${y(g).toFixed(1)}" y2="${y(g).toFixed(1)}" stroke="#E4E7E2"/><text x="${pl-4}" y="${(y(g)+3).toFixed(1)}" font-size="9" fill="#6B7770" text-anchor="end">${lab}</text>`)}
+ const bench=d.bench!=null?`<line x1="${pl}" x2="${W-pr}" y1="${y(d.bench).toFixed(1)}" y2="${y(d.bench).toFixed(1)}" stroke="#A8701A" stroke-dasharray="4 3" stroke-width="1.2"/>`:'';
+ return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}${bench}<path d="${vs.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ')}" fill="none" stroke="#16241C" stroke-width="1.5"/>${vs.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2" fill="${pts[i].loc==='Outside'?'#2E7A45':'#A8701A'}"/>`).join('')}<text x="${pl}" y="${H-4}" font-size="9" fill="#6B7770">${pts[0].date}</text><text x="${W-pr}" y="${H-4}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].date}</text></svg>
+ <div class="sub" style="font-size:12px;margin-top:6px"><span class="dot wait"></span> simulator &nbsp; <span class="dot ok"></span> outside${d.bench!=null?' &nbsp;· dashed line is the benchmark':''}${d.lower?'<br>Lower is better, so the chart is flipped: up is always better.':''}</div>`}
+function pLastDate(k){let d=null;DB.practice.forEach(s=>s.drills.forEach(x=>{if(x.k===k&&(!d||s.date>d))d=s.date}));return d}
+function daysSince(d){return Math.round((Date.parse(today()+'T12:00:00')-Date.parse(d+'T12:00:00'))/864e5)}
+function pBaseline(){const last=pLastDate('cb-full');let t,cls,lab;
+ if(!last){t='No Full Combine yet. Run one to set your starting point.';cls='gray';lab='none'}
+ else{const dd=daysSince(last);
+  if(dd<14){t=`Last run ${dd===0?'today':dd===1?'yesterday':dd+' days ago'}. Next one due in ${14-dd} day${14-dd===1?'':'s'}.`;cls='real';lab='on track'}
+  else if(dd<=28){t=`Last run ${dd} days ago. Due now.`;cls='sim';lab='due'}
+  else{t=`Last run ${dd} days ago.`;cls='red';lab='overdue'}}
+ return `<button class="card row between" style="width:100%;text-align:left" onclick="sub.pdrill='cb-full';render();window.scrollTo(0,0)"><div class="grow"><div style="font-weight:600">Full Combine baseline</div><div class="sub">${t}</div></div><span class="badge ${cls}">${lab}</span></button>`}
+function pLastGap(){let g={};[...DB.practice].sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>s.drills.forEach(x=>{if(x.gap)Object.keys(x.gap).forEach(c=>{g[c]=x.gap[c]})}));return g}
+
+
+/* ---- combine shot entry: carry and distance from center for every shot ---- */
+const r1=v=>Math.round(v*10)/10;
+const tLab=t=>t==='Dr'?'Driver':t+' yds';
+const fOff=o=>o==null||isNaN(o)?'–':Math.abs(o)<0.05?'0':fx(Math.abs(o))+(o<0?' L':' R');
+const fSgn=v=>v==null||isNaN(v)?'–':(v>=0.05?'+':v<=-0.05?'−':'')+fx(Math.abs(v));
+function cbPlan(d){const P=d.plan,out=[];for(let r=0;r<P.rounds;r++)P.t.forEach(t=>{for(let i=0;i<P.per;i++)out.push(t)});return out}
+function cbTotal(d){return d.plan.random?null:cbPlan(d).length}
+function cbNext(d,e){if(d.plan.random)return e.nextT;const used={},seen={};(e.shots||[]).forEach(s=>used[s.t]=(used[s.t]||0)+1);
+ for(const t of cbPlan(d)){seen[t]=(seen[t]||0)+1;if(seen[t]>(used[t]||0))return t}return null}
+function cbRoundOf(d,shots,t){if(d.plan.random)return null;return Math.floor(shots.filter(s=>s.t===t).length/d.plan.per)+1}
+function cbRound(d,shots,i){return cbRoundOf(d,shots.slice(0,i),shots[i].t)}
+function cbProx(s){return s.t==='Dr'?null:r1(Math.hypot(s.c-s.t,s.o)*3)}
+function cbSummary(shots){const ns=(shots||[]).filter(s=>s.t!=='Dr');if(!ns.length)return null;const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+ return {prox:avg(ns.map(cbProx)),dc:avg(ns.map(s=>s.c-s.t)),off:avg(ns.map(s=>s.o)),n:ns.length}}
+function pRandT(d,prev){const o=d.plan.t.filter(t=>t!==prev);return o[Math.floor(Math.random()*o.length)]}
+function cbTable(shots){const by={};
+ shots.forEach(s=>{const o=by[s.t]||(by[s.t]={n:0,c:0,dc:0,o:0,ao:0,p:0,in10:0});o.n++;o.c+=s.c;o.o+=s.o;o.ao+=Math.abs(s.o);
+  if(s.t!=='Dr'){o.dc+=s.c-s.t;o.p+=cbProx(s);if(Math.abs(s.c-s.t)<=s.t*0.1)o.in10++}});
+ const ts=T10.filter(t=>by[t]),S=cbSummary(shots);
+ const side=o=>{const a=o.o/o.n;return Math.abs(a)>=0.5?` <span class="sub">${a<0?'L':'R'}</span>`:''};
+ return `<div class="card tscroll" style="padding:6px 10px"><table><tr><th>Target</th><th>Shots</th><th>Carry</th><th>vs tgt</th><th>Offline</th><th>Prox ft</th><th>In 10%</th></tr>
+ ${ts.map(t=>{const o=by[t],dr=t==='Dr';return `<tr><td><b>${dr?'Dr':t}</b></td><td>${o.n}</td><td>${fx(o.c/o.n)}</td><td>${dr?'':fSgn(o.dc/o.n)}</td><td>${fx(o.ao/o.n)}${side(o)}</td><td>${dr?'':fx(o.p/o.n)}</td><td>${dr?'':pct(o.in10,o.n)}</td></tr>`}).join('')}
+ ${S&&ts.filter(t=>t!=='Dr').length>1?`<tr style="font-weight:700"><td>${by.Dr?'No Dr':'All'}</td><td>${S.n}</td><td></td><td>${fSgn(S.dc)}</td><td>${fOff(S.off)}</td><td>${fx(S.prox)}</td><td></td></tr>`:''}</table>
+ <p class="sub" style="font-size:12px;margin:6px 0 2px">vs tgt: + long, − short. Offline is the average miss width, with the side you favour. Prox is the straight-line distance from the target, worked out from carry and offline.</p></div>`}
+function cbInput(d,e){e.shots=e.shots||[];const kp=e.kp||(e.kp={f:'c',c:'',o:'',edit:null,t:null});
+ if(d.plan.random&&e.nextT==null)e.nextT=pRandT(d,e.shots.length?e.shots[e.shots.length-1].t:null);
+ const editing=kp.edit!=null&&e.shots[kp.edit],n=e.shots.length,total=cbTotal(d);
+ const tgt=editing?e.shots[kp.edit].t:(kp.t!=null?kp.t:cbNext(d,e));
+ const full=!editing&&tgt==null;
+ const rnd=!editing&&tgt!=null?cbRoundOf(d,e.shots,tgt):null;
+ const head=editing?`Editing shot ${kp.edit+1}`:full?`All ${total} shots in`:`Shot ${n+1}${total?' of '+total:''}${rnd&&d.plan.rounds>1?' · round '+Math.min(rnd,d.plan.rounds):''}`;
+ const field=(f,label)=>{const on=kp.f===f,v=kp[f];return `<button class="kfield ${on?'on':''}" onclick="pCbField('${f}')"><span class="sub">${label}</span><b class="num">${v||'<span style="color:#c5cac4">0</span>'}</b></button>`};
+ const keys=['1','2','3','4','5','6','7','8','9','.','0','⌫'];
+ const shotRows=[...e.shots.keys()].reverse().map(i=>{const s=e.shots[i],p=cbProx(s);return `<tr onclick="pCbEdit(${i})" style="${kp.edit===i?'background:var(--green-soft)':''}"><td>${i+1}</td><td><b>${s.t==='Dr'?'Dr':s.t}</b></td><td>${fx(s.c)}</td><td>${s.t==='Dr'?'':fSgn(s.c-s.t)}</td><td>${fOff(s.o)}</td><td>${p==null?'':fx(p)}</td></tr>`}).join('');
+ const S=cbSummary(e.shots);
+ return `<div class="card" id="kpad">
+ <div class="row between"><div><div class="sub">${head}</div><b class="num" style="font-size:34px;line-height:1.1">${tgt==null?'–':tLab(tgt)}</b></div>
+ ${editing?`<button class="btn small" onclick="pCbCancel()">Done editing</button>`:d.plan.random?`<button class="btn small" onclick="pCbRandom()">New target</button>`:''}</div>
+ <div class="chips" style="margin:8px 0 2px;gap:5px">${d.plan.t.map((t,i)=>`<button style="min-height:32px;padding:0 10px;font-size:13px" class="${t===tgt?'on':''}" onclick="pCbT(${i})">${t==='Dr'?'Dr':t}</button>`).join('')}</div>
+ <p class="sub" style="font-size:12px;margin:2px 0 10px">${editing?'Fix the numbers, then tap Left, On line or Right to save the change.':d.plan.random?'Random order. Tap a target to change this shot.':'Targets follow the combine order. Tap one to change just this shot.'}</p>
+ ${full?`<p style="margin:0 0 6px">Every shot is logged. Tap a shot in the list to fix it, or add the TrackMan score.</p>`:`
+ <div class="kfields">${field('c','Carry (yds)')}${field('o','From center (yds)')}</div>
+ <div class="kpad">${keys.map(k=>`<button onclick="pKey('${k}')" aria-label="${k==='⌫'?'Delete':k}">${k}</button>`).join('')}</div>
+ ${kp.f==='c'?`<button class="btn primary block" style="min-height:54px;margin-top:8px" onclick="pCbField('o')">Next: from center</button>`
+  :`<div class="pbtns" style="grid-template-columns:1fr 1fr 1fr;margin:8px 0 0"><button onclick="pCbCommit('L')">Left</button><button class="good" onclick="pCbCommit('C')">On line</button><button onclick="pCbCommit('R')">Right</button></div>`}`}
+ ${editing?`<button class="btn danger block" style="margin-top:8px" onclick="pCbDel(${kp.edit})">Delete shot ${kp.edit+1}</button>`:n?`<div class="row between" style="margin-top:10px"><span class="sub">${S?`${n} shot${n===1?'':'s'} · avg prox ${fx(S.prox)} ft`:n+' shot'+(n===1?'':'s')}</span><button class="btn small" onclick="pCbUndo()">Undo last</button></div>`:''}
+ </div>
+ ${n?`<h2>Shots <span class="sub" style="font-weight:400">tap one to fix it</span></h2><div class="card tscroll" style="padding:6px 10px;max-height:280px;overflow-y:auto"><table><tr><th>#</th><th>Tgt</th><th>Carry</th><th>vs</th><th>Offline</th><th>Prox</th></tr>${shotRows}</table></div>
+ <h2>By target</h2>${cbTable(e.shots)}`:''}
+ ${d.lower?(S?'':`<div class="card"><label class="f" style="margin-top:0">${esc(d.score)}, if you'd rather just type it</label><input class="in" type="number" inputmode="decimal" step="any" value="${e.num??''}" oninput="pNum(this.value)"></div>`)
+  :`<div class="card"><label class="f" style="margin-top:0">TrackMan score <span style="opacity:.75">from the screen at the end</span></label><input class="in" style="font-size:22px;font-weight:700" type="number" inputmode="decimal" step="any" placeholder="0 to ${d.max}" value="${e.num??''}" oninput="pNum(this.value)"></div>`}`}
+function pCbDraft(){return DB.activePractice.draft}
+function pKey(k){const e=pCbDraft(),kp=e.kp,f=kp.f;let v=kp[f]||'';
+ if(k==='⌫')v=v.slice(0,-1);else if(k==='.'){if(v.includes('.'))return;v=(v||'0')+'.'}else{if(v.replace('.','').length>=4||(v.includes('.')&&v.split('.')[1].length>=1))return;v=v==='0'?k:v+k}
+ kp[f]=v;save();render()}
+function pCbField(f){const e=pCbDraft();if(f==='o'&&!(parseFloat(e.kp.c)>0))return toast('Enter the carry first');e.kp.f=f;save();render()}
+function pCbT(i){const e=pCbDraft(),d=DR(e.k),t=d.plan.t[i];if(e.kp.edit!=null){e.shots[e.kp.edit].t=t}else if(d.plan.random){e.nextT=t;e.kp.t=null}else e.kp.t=t;save();render()}
+function pCbRandom(){const e=pCbDraft(),d=DR(e.k);e.nextT=pRandT(d,e.nextT);save();render()}
+function pCbCommit(side){const e=pCbDraft(),d=DR(e.k),kp=e.kp;const c=parseFloat(kp.c);
+ if(!(c>0&&c<450)){kp.f='c';save();render();return toast('Enter the carry first')}
+ let o=side==='C'?0:Math.abs(parseFloat(kp.o)||0);if(side==='L')o=-o;
+ if(side!=='C'&&o===0)return toast('Enter how far from center, or tap On line');
+ const editing=kp.edit!=null&&e.shots[kp.edit];const t=editing?e.shots[kp.edit].t:(kp.t!=null?kp.t:cbNext(d,e));
+ if(t==null)return toast('All shots are in. Tap a shot to fix it');
+ const s={t,c:r1(c),o:r1(o)};
+ if(editing)e.shots[kp.edit]=s;else{e.shots.push(s);if(d.plan.random)e.nextT=pRandT(d,t)}
+ e.kp={f:'c',c:'',o:'',edit:null,t:null};save();render();
+ if(editing)document.getElementById('kpad')?.scrollIntoView({block:'start'})}
+function pCbEdit(i){const e=pCbDraft(),s=e.shots[i];e.kp={f:'c',c:String(s.c),o:Math.abs(s.o)<0.05?'':String(Math.abs(s.o)),edit:i,t:null};save();render();document.getElementById('kpad')?.scrollIntoView({block:'start'})}
+function pCbCancel(){pCbDraft().kp={f:'c',c:'',o:'',edit:null,t:null};save();render()}
+function pCbDel(i){const e=pCbDraft();if(!confirm('Delete shot '+(i+1)+'?'))return;e.shots.splice(i,1);e.kp={f:'c',c:'',o:'',edit:null,t:null};save();render()}
+function pCbUndo(){const e=pCbDraft(),d=DR(e.k);const s=e.shots.pop();if(s&&d.plan.random)e.nextT=s.t;e.kp={f:'c',c:'',o:'',edit:null,t:null};save();render()}
+
+/* ---- views ---- */
+function vPractice(){const ap=DB.activePractice;
+ if(ap&&ap.draft&&DR(ap.draft.k))return vDrillLog();
+ if(sub.pdrill)return vDrillHist(sub.pdrill);
+ if(sub.psess){const s=DB.practice.find(x=>x.id===sub.psess);if(s)return vPSession(s)}
+ if(ap)return vPActive();
+ return vPHome()}
+function pPendingCount(){return DB.practice.filter(s=>!s.pushed).length}
+function vPHome(){const f=sub.pform||(sub.pform={date:today(),loc:'Sim'});const pend=pPendingCount();
+ const ss=[...DB.practice].sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)).slice(0,20);
+ return `<div class="row between"><h1>Practice</h1>${pend?`<button class="btn small green" ${psyncing?'disabled':''} onclick="pSyncAll()">${psyncing?'<span class="spin"></span>Pushing…':'Push '+pend+' to Sheets'}</button>`:''}</div>
+ <div class="card"><label class="f" style="margin-top:0">Where</label>
+ <div class="seg"><button class="${f.loc==='Sim'?'on':''}" onclick="sub.pform.loc='Sim';render()">Simulator</button><button class="${f.loc==='Outside'?'on':''}" onclick="sub.pform.loc='Outside';render()">Outside</button></div>
+ <label class="f">Date</label><input class="in" type="date" value="${f.date}" onchange="sub.pform.date=this.value"></div>
+ <div class="stack"><button class="btn primary block" style="min-height:54px" onclick="pStart()">Start session</button>
+ ${f.loc==='Sim'?`<button class="btn block" onclick="pStart(true)">Start with the driver routine</button>`:''}</div>
+ <div style="margin-top:12px">${pBaseline()}</div>
+ <h2>Progress</h2>${pDrillList(false)}
+ ${ss.length?`<h2>Sessions</h2><div class="card list" style="padding:0 14px">${ss.map(s=>`<button class="item" onclick="go('practice',{psess:'${s.id}'})"><span class="dot ${s.pushed?'ok':'wait'}" title="${s.pushed?'Pushed':'Not pushed'}"></span><div class="grow"><div style="font-weight:600">${s.date} · ${PLOC[s.location]||esc(s.location)}</div><div class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.drills.map(x=>esc(x.name)).join(', ')||'no drills'}</div></div><span class="sub">›</span></button>`).join('')}</div>`:''}`}
+function pDrillList(active){const cat=sub.pcat||(sub.pcat=(active&&DB.activePractice.location==='Outside')?'outdoor':'driver');
+ const chips=`<div class="chips" style="margin-bottom:10px">${PCATS.map(([k,l])=>`<button class="${cat===k?'on':''}" onclick="sub.pcat='${k}';render()">${l}</button>`).join('')}</div>`;
+ const ds=DRILLS.filter(d=>d.cat===cat);
+ const routine=active&&cat==='driver'?`<button class="btn green block" style="margin-bottom:10px" onclick="pRoutine()">Run the full driver routine (5 drills, ~40 balls)</button>`:'';
+ const off=active&&ds[0]&&ds[0].loc!=='Any'&&ds[0].loc!==DB.activePractice.location?`<p class="sub" style="margin:-2px 0 8px;font-size:13px">These are ${ds[0].loc==='Sim'?'simulator':'outdoor'} drills; they'll be logged under this ${PLOC[DB.activePractice.location].toLowerCase()} session.</p>`:'';
+ return chips+routine+off+`<div class="card list" style="padding:0 14px">${ds.map(d=>{const h=pHist(d.k);
+  const label=`<div style="font-weight:600">${d.name}${d.club?` <span class="sub" style="font-weight:400">${esc(d.club)}</span>`:''}</div><div class="sub">${pSumLine(d,h)}</div>`;
+  return active?`<div class="item"><button class="grow" style="text-align:left;min-height:44px" onclick="pOpen('${d.k}')">${label}</button>${pSpark(d,h)}<button class="btn small" onclick="sub.pdrill='${d.k}';render();window.scrollTo(0,0)">Stats</button></div>`
+   :`<button class="item" onclick="sub.pdrill='${d.k}';render();window.scrollTo(0,0)"><div class="grow">${label}</div>${pSpark(d,h)}<span class="sub">›</span></button>`}).join('')}</div>`}
+function pDetail(x){return [x.brk,...(x.stats||[]).filter(t=>t[1]!==''&&t[1]!=null).map(t=>t[0]+' '+t[1]),x.notes].filter(Boolean).map(esc).join(' · ')}
+function vPActive(){const ap=DB.activePractice;
+ return `<div class="row between" style="margin-bottom:6px"><div class="sub">${ap.date} <span class="badge ${ap.location==='Sim'?'sim':'real'}">${PLOC[ap.location]}</span></div><button class="btn small" onclick="pFinishSheet()">Finish</button></div>
+ <h1>Practice session</h1>
+ ${ap.drills.length?`<div class="card list" style="padding:0 14px">${ap.drills.map((x,i)=>`<div class="item"><div class="grow"><div style="font-weight:600">${esc(x.name)}</div><div class="sub">${pDetail(x)}</div></div><b class="num" style="font-size:18px;white-space:nowrap">${pFmt(x)}</b><button style="min-width:36px;min-height:40px;color:var(--mute);font-size:20px" aria-label="Remove ${esc(x.name)}" onclick="pDelEntry(${i})">×</button></div>`).join('')}</div>`
+  :`<div class="card empty" style="padding:18px">Pick a drill below. Each one logs a score you can track over time.</div>`}
+ <h2>Add a drill</h2>${pDrillList(true)}`}
+function pBallsTxt(d){return d.type==='count'?d.balls+' balls':d.type==='ladder'?d.rungs.length+' rungs':d.type==='closeout'?d.need+' in a row':d.type==='holes'?d.holes+' holes, par '+d.holes*d.par:d.type==='streak'?'until a miss':''}
+function vDrillLog(){const ap=DB.activePractice,e=ap.draft,d=DR(e.k),c=pCalc(d,e);
+ const step=ap.routine?ROUTINE.indexOf(e.k):-1,next=ap.queue.length?DR(ap.queue[0]):null;
+ const ballType=!['number','stats','gapping'].includes(d.type);
+ const cbS=d.plan&&c.score==null&&(e.shots||[]).length?cbSummary(e.shots):null;
+ const scoreBox=['stats','gapping'].includes(d.type)||(d.plan&&c.score==null&&!cbS)?'':cbS?`<div class="score"><b class="num">${fx(cbS.prox)}</b><span>avg prox ft</span></div>`:`<div class="score"><b class="num">${c.score==null?'–':pFmt({k:d.k,score:c.score,max:c.max})}</b><span>${d.type==='number'?'score':c.done?'complete':'so far'}</span></div>`;
+ return `<div class="row between" style="margin-bottom:6px"><div class="sub">${step>=0?`Driver routine · ${step+1} of ${ROUTINE.length}`:catName(d.cat)} <span class="badge ${ap.location==='Sim'?'sim':'real'}">${PLOC[ap.location]}</span></div><button class="btn small" onclick="pCancel()">${step>=0?'Stop routine':'Cancel'}</button></div>
+ <div class="holehead"><div class="grow" style="min-width:0"><div style="font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1">${d.name}</div><div class="meta">${[d.club,pBallsTxt(d)].filter(Boolean).map(esc).join(' · ')}</div></div>${scoreBox}</div>
+ <p class="sub" style="margin:-4px 0 10px">${esc(d.what)}</p>
+ ${pInput(d,e,c)}
+ ${pStatsInputs(d,e)}
+ <label class="f">Notes <span style="opacity:.75">optional, the miss or the feel</span></label><textarea class="in" style="min-height:56px" oninput="DB.activePractice.draft.notes=this.value;save()">${esc(e.notes)}</textarea>
+ <div class="stack" style="margin-top:14px"><button class="btn green block" style="min-height:54px" ${ballType&&!c.logged?'disabled':''} onclick="pSave()">${next?'Save, then '+esc(next.name):'Save drill'}</button>
+ ${next?`<button class="btn block" onclick="pSkip()">Skip this one</button>`:''}</div>
+ <p class="sub" style="font-size:12px;margin-top:10px">Score: ${esc(d.score)}${d.bench?` · benchmark ${d.bench}/${d.balls} or better`:''}</p>`}
+function pInput(d,e,c){const b=e.balls,n=b.length;
+ const undo=`<button class="btn small" ${n?'':'disabled'} onclick="pUndo()">Undo</button>`;
+ const btns=(opts,dis)=>`<div class="pbtns" style="grid-template-columns:repeat(${opts.length},1fr)">${opts.map(o=>`<button class="${o[2]?'good':''}" ${dis?'disabled':''} onclick="pBall('${o[0]}')">${o[1]}</button>`).join('')}</div>`;
+ if(d.type==='count'){
+  const dots=`<div class="balls">${Array.from({length:d.balls},(_,i)=>{const o=b[i]&&d.out.find(x=>x[0]===b[i]);return `<span class="${o?(o[2]?'g':'r'):i===n?'cur':''}">${o&&o[3]?o[3]:''}</span>`}).join('')}</div>`;
+  return `<div class="card">${dots}<div class="row between" style="margin-top:10px"><b>${c.done?`All ${d.balls} balls in`:`Ball ${n+1} of ${d.balls}${d.labels?' · '+d.labels[n]:''}`}</b>${undo}</div>${btns(d.out,c.done)}<p class="sub" style="margin:0;font-size:13px">${esc(c.brk)}</p></div>`}
+ if(d.type==='ladder'){const r=d.rungs[Math.min(c.hits,d.rungs.length-1)];
+  return `<div class="card"><div class="rungs">${d.rungs.map((x,i)=>`<span class="${i<c.hits?'g':i===c.hits?'cur':''}">${x}</span>`).join('')}</div>
+  <div class="row between" style="margin-top:10px"><b>${c.done?`Finished in ${n} balls`:`${r} yds · land ${Math.round(r*.9)}–${Math.round(r*1.1)}`}</b>${undo}</div>
+  ${btns([['miss','Outside 10%',0],['hit','Inside 10%',1]],c.done)}<p class="sub" style="margin:0;font-size:13px">${n} ball${n===1?'':'s'} so far</p></div>`}
+ if(d.type==='closeout'){
+  return `<div class="card"><div class="balls">${Array.from({length:d.need},(_,i)=>`<span class="${i<c.run?'g':''}" style="width:26px;height:26px"></span>`).join('')}</div>
+  <div class="row between" style="margin-top:10px"><b>${c.done?`Closed out in ${n} balls`:`${c.run} in a row · ball ${n+1}`}</b>${undo}</div>${btns([['miss','Miss',0],['fw','Fairway',1]],c.done)}</div>`}
+ if(d.type==='streak'){const dist=d.dists[c.run%d.dists.length];
+  return `<div class="card"><div class="row between"><div><b class="num" style="font-size:40px;line-height:1">${c.run}</b><div class="sub">current streak</div></div><div style="text-align:right"><b class="num" style="font-size:40px;line-height:1">${c.score??0}</b><div class="sub">best</div></div></div>
+  <div class="row between" style="margin-top:12px"><b>Next putt · ${dist} ft</b>${undo}</div>${btns(MM,false)}<p class="sub" style="margin:0;font-size:13px">${c.at.length?'Finished streaks: '+c.at.join(', '):'A miss ends the streak. Keep going to beat your best.'}</p></div>`}
+ if(d.type==='holes'){const opts=Array.from({length:d.par+3},(_,i)=>i+1);
+  return `<div class="card"><div class="strip">${Array.from({length:d.holes},(_,i)=>`<button class="${i===n?'cur':''}" tabindex="-1" aria-label="Hole ${i+1}">${b[i]?`<span class="mark ${markCls(b[i]-d.par)}">${b[i]}</span>`:'<span class="mark"></span>'}</button>`).join('')}</div>
+  <div class="row between"><b>${c.done?`All ${d.holes} holes · ${c.score} (${fmtPar(c.score-c.max)})`:`Hole ${n+1} of ${d.holes} · par ${d.par}`}</b>${undo}</div>
+  <div class="pbtns" style="grid-template-columns:repeat(${opts.length},1fr)">${opts.map(v=>`<button class="${v===d.par?'good':''}" ${c.done?'disabled':''} onclick="pBall(${v})">${v}</button>`).join('')}</div></div>`}
+ if(d.type==='number'&&d.plan)return cbInput(d,e);
+ if(d.type==='number'){
+  return `<div class="card">${d.targets?`<div class="row between"><div><div class="sub">Target</div><b class="num" style="font-size:34px;line-height:1.1">${e.target?esc(e.target)+(e.target==='Driver'?'':' yds'):'–'}</b></div><button class="btn" onclick="pTarget()">${e.target?'Next target':'First target'}</button></div><p class="sub" style="font-size:12px;margin:6px 0 10px">Random order, never the same target twice in a row.</p>`:''}
+  <label class="f" style="margin-top:0">${esc(d.score)}</label><input class="in" style="font-size:22px;font-weight:700" type="number" inputmode="decimal" step="any" placeholder="${d.max?'0 to '+d.max:''}" value="${e.num??''}" oninput="pNum(this.value)"></div>`}
+ if(d.type==='stats'){
+  return `<div class="card"><label class="f" style="margin-top:0">When</label><div class="seg"><button class="${e.phase==='Before'?'on':''}" onclick="pPhase('Before')">Before change</button><button class="${e.phase==='After'?'on':''}" onclick="pPhase('After')">After change</button></div><p class="sub" style="font-size:12px;margin:8px 0 0">Log a before and an after as two entries, then compare them under Stats.</p></div>`}
+ if(d.type==='gapping'){const last=pLastGap();
+  return `<div class="card" style="padding:8px 12px"><div class="holes-grid" style="grid-template-columns:44px 1fr 1fr"><b>Club</b><b>Carry</b><b>Spin</b>
+  ${DB.settings.clubs.map((cl,i)=>{const g=e.gap[cl]||{},l=last[cl]||{};return `<b>${esc(cl)}</b><input class="in" type="number" inputmode="numeric" placeholder="${l.carry??''}" value="${g.carry??''}" oninput="pGap(${i},'carry',this.value)"><input class="in" type="number" inputmode="numeric" placeholder="${l.spin??''}" value="${g.spin??''}" oninput="pGap(${i},'spin',this.value)">`}).join('')}</div>
+  <p class="sub" style="font-size:12px;margin:8px 0 0">Grey numbers are from your last audit. Leave a club blank to skip it.</p></div>`}
+ return ''}
+function pStatsInputs(d,e){if(!(d.stats||[]).length)return '';
+ return `<label class="f">${d.type==='stats'?'TrackMan averages':'Key stat'+(d.stats.length>1?'s':'')} <span style="opacity:.75">${d.type==='stats'?'':'optional, from TrackMan'}</span></label>
+ <div class="row" style="align-items:flex-end">${d.stats.map((s,i)=>`<div class="grow"><div class="sub" style="font-size:12px;margin-bottom:3px">${esc(s)}</div><input class="in" type="number" step="any" value="${e.stats[s]??''}" oninput="pStat(${i},this.value)"></div>`).join('')}</div>`}
+function vDrillHist(k){const d=DR(k);if(!d){sub.pdrill=null;return vPractice()}
+ const h=pHist(k),S=pStats(d,h),rev=[...h].reverse();
+ let body='';
+ if(d.type==='gapping'){const gs=h.filter(x=>x.gap&&Object.keys(x.gap).length);
+  body=gs.length?`<h2>Latest audit <span class="sub" style="font-weight:400">${gs[gs.length-1].date}</span></h2>${pGapTable(gs[gs.length-1].gap,gs.length>1?gs[gs.length-2].gap:null)}${gs.length>1?`<p class="sub" style="font-size:12px;margin-top:-4px">Change is carry versus the audit on ${gs[gs.length-2].date}.</p>`:''}`
+   :'<div class="card empty">No gapping audit logged yet.</div>'}
+ else if(d.type==='stats'){
+  body=h.length?`<div class="card tscroll" style="padding:6px 10px"><table><tr><th>Date</th><th style="text-align:left">When</th>${d.stats.map(s=>`<th>${esc(s)}</th>`).join('')}</tr>
+  ${rev.map(x=>`<tr><td>${x.date.slice(5)}</td><td style="text-align:left">${esc(x.phase||(/^(Before|After)/.exec(x.brk||'')||[])[1]||'')}</td>${d.stats.map(s=>{const t=(x.stats||[]).find(t=>t[0]===s);return `<td>${t&&t[1]!==''&&t[1]!=null?esc(t[1]):'–'}</td>`}).join('')}</tr>`).join('')}</table></div>`
+   :'<div class="card empty">No setup checks logged yet.</div>'}
+ else{
+  const benchTxt=d.bench&&S?(()=>{const hit=S.l5.filter(x=>x.score>=d.bench).length;return `<div class="card" style="margin-top:8px">Benchmark: ${d.bench}/${d.balls} or better. You've hit it in <b>${hit}</b> of your last ${S.l5.length}.</div>`})():'';
+  body=`<div class="kpis"><div class="kpi"><b class="num">${S?pFmt(S.last):'–'}</b><span>last</span></div><div class="kpi"><b class="num">${S?pFmt(S.best):'–'}</b><span>best</span></div><div class="kpi"><b class="num">${S?pAvgTxt(d,S):'–'}</b><span>last-5 avg</span></div></div>
+  ${benchTxt}
+  <h2>Trend</h2><div class="card" style="padding:10px">${pTrend(d,h)}</div>
+  ${d.plan?(()=>{const w=h.filter(x=>x.shots&&x.shots.length).slice(-5);return w.length?`<h2>By target <span class="sub" style="font-weight:400">last ${w.length===1?'combine':w.length+' combines'}, ${w.reduce((a,x)=>a+x.shots.length,0)} shots</span></h2>${cbTable(w.flatMap(x=>x.shots))}`:''})():''}
+  ${h.length?`<h2>History <span class="sub" style="font-weight:400">${h.length} logged</span></h2><div class="card tscroll" style="padding:6px 10px"><table><tr><th>Date</th><th>Score</th><th style="text-align:left;padding-left:10px">Detail</th></tr>
+  ${rev.map(x=>`<tr><td>${x.date.slice(5)}</td><td>${pFmt(x)}</td><td style="text-align:left;white-space:normal;font-size:12px;color:var(--mute);padding-left:10px">${pDetail(x)}</td></tr>`).join('')}</table></div>`:''}`}
+ return `<button class="btn small" onclick="sub.pdrill=null;render()">‹ ${DB.activePractice?'Session':'Practice'}</button>
+ <h1 style="margin-top:12px">${d.name}</h1><p class="sub" style="margin:-8px 0 12px">${catName(d.cat)}${d.club?' · '+esc(d.club):''}. ${esc(d.what)}</p>
+ ${body}
+ <p class="sub" style="font-size:12px">Score: ${esc(d.score)}</p>
+ <button class="btn primary block" onclick="pStartDrill('${k}')">${DB.activePractice?'Log this drill now':'Start a session with this drill'}</button>`}
+function pGapTable(g,prev){const order=DB.settings.clubs;
+ const cl=[...order.filter(c=>g[c]),...Object.keys(g).filter(c=>!order.includes(c))].filter(c=>g[c]&&(g[c].carry!=null||g[c].spin!=null));
+ const withCarry=cl.filter(c=>g[c].carry!=null);
+ return `<div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Carry</th><th>Gap</th><th>Spin</th>${prev?'<th>Change</th>':''}</tr>
+ ${cl.map(c=>{const i=withCarry.indexOf(c),nx=i>=0?withCarry[i+1]:null;const gap=i>=0&&nx?g[c].carry-g[nx].carry:null;const pc=prev&&prev[c]&&prev[c].carry!=null&&g[c].carry!=null?g[c].carry-prev[c].carry:null;
+  return `<tr><td><b>${esc(c)}</b></td><td>${g[c].carry??'–'}</td><td>${gap==null?'':gap}</td><td>${g[c].spin??'–'}</td>${prev?`<td style="color:${pc>0?'var(--green)':pc<0?'var(--red)':'inherit'}">${pc==null?'':(pc>0?'+':'')+pc}</td>`:''}</tr>`}).join('')}</table></div>`}
+function vPSession(s){const busy=inflight.has(s.id);const gapE=s.drills.find(x=>x.gap&&Object.keys(x.gap).length);
+ return `<button class="btn small" onclick="go('practice')">‹ Practice</button>
+ <h1 style="margin-top:12px">${s.date}</h1>
+ <p class="sub" style="margin:-8px 0 12px"><span class="badge ${s.location==='Sim'?'sim':'real'}">${PLOC[s.location]||esc(s.location)}</span> · ${s.drills.length} drill${s.drills.length===1?'':'s'} · ${s.pushed?'<span class="badge gray">Pushed '+new Date(s.pushedAt).toLocaleDateString()+'</span>':'<span class="badge red">Not pushed</span>'}</p>
+ <div class="card list" style="padding:0 14px">${s.drills.map(x=>`<div class="item" style="align-items:flex-start"><div class="grow"><div style="font-weight:600">${esc(x.name)}</div><div class="sub">${pDetail(x)}</div></div><b class="num" style="font-size:18px;white-space:nowrap">${pFmt(x)}</b></div>`).join('')}</div>
+ ${s.drills.filter(x=>x.shots&&x.shots.length).map(x=>`<h2>${esc(x.name)} <span class="sub" style="font-weight:400">${x.shots.length} shots</span></h2>${cbTable(x.shots)}`).join('')}
+ ${gapE?`<h2>Gapping</h2>${pGapTable(gapE.gap,null)}`:''}
+ <div class="stack"><button class="btn green block" ${busy?'disabled':''} onclick="pushPractice(DB.practice.find(x=>x.id==='${s.id}'))">${busy?'<span class="spin"></span>Pushing…':s.pushed?'Push again':'Push to Sheets'}</button>
+ <button class="btn block" onclick="pReopen('${s.id}')">Edit session</button>
+ <button class="btn danger block" onclick="if(confirm('Delete this session from the phone? Rows already in the sheet stay there.')){DB.practice=DB.practice.filter(x=>x.id!=='${s.id}');save();go('practice')}">Delete session</button></div>`}
+
+/* ---- actions ---- */
+function pStart(routine){const f=sub.pform||{date:today(),loc:'Sim'};
+ DB.activePractice={id:uid(),date:f.date||today(),location:f.loc||'Sim',drills:[],draft:null,queue:[],routine:false,createdAt:Date.now()};
+ sub={pcat:DB.activePractice.location==='Outside'?'outdoor':'driver'};if(routine)return pRoutine();save();render()}
+function pRoutine(){const ap=DB.activePractice;ap.routine=true;ap.queue=ROUTINE.slice(1);ap.draft=pNew(ROUTINE[0]);save();render();window.scrollTo(0,0)}
+function pOpen(k){const ap=DB.activePractice;ap.routine=false;ap.queue=[];ap.draft=pNew(k);sub.pdrill=null;save();render();window.scrollTo(0,0)}
+function pStartDrill(k){if(!DB.activePractice){const d=DR(k);sub.pform={date:today(),loc:d.loc==='Outside'?'Outside':(sub.pform&&sub.pform.loc)||'Sim'};pStart()}pOpen(k)}
+function pBall(v){const e=DB.activePractice.draft,d=DR(e.k);if(pCalc(d,e).done)return;e.balls.push(v);save();render()}
+function pUndo(){DB.activePractice.draft.balls.pop();save();render()}
+function pNum(v){DB.activePractice.draft.num=v===''?null:+v;save()}
+function pStat(i,v){const e=DB.activePractice.draft,d=DR(e.k);e.stats[d.stats[i]]=v===''?'':+v;save()}
+function pPhase(p){const e=DB.activePractice.draft;e.phase=e.phase===p?null:p;save();render()}
+function pGap(i,f,v){const e=DB.activePractice.draft,cl=DB.settings.clubs[i];e.gap[cl]=e.gap[cl]||{};e.gap[cl][f]=v===''?null:+v;save()}
+function pTarget(){const e=DB.activePractice.draft,d=DR(e.k);const o=d.targets.filter(t=>t!==e.target);e.target=o[Math.floor(Math.random()*o.length)];save();render()}
+function pNextDraft(){const ap=DB.activePractice;ap.draft=ap.queue.length?pNew(ap.queue.shift()):null;if(!ap.draft)ap.routine=false}
+function pSave(){const ap=DB.activePractice,e=ap.draft,d=DR(e.k),c=pCalc(d,e);if(!c.logged)return toast('Nothing logged yet');
+ const x={id:uid(),k:d.k,name:d.name,cat:d.cat,score:c.score,max:c.max??null,lower:!!d.lower,brk:c.brk||'',stats:(d.stats||[]).map(s=>[s,e.stats[s]??'']),notes:(e.notes||'').trim(),balls:e.balls.slice()};
+ if(d.type==='gapping')x.gap=JSON.parse(JSON.stringify(e.gap));if(e.phase)x.phase=e.phase;
+ if(d.plan&&(e.shots||[]).length){x.shots=e.shots.map(s=>({...s}));const S=cbSummary(e.shots);x.stats=S?[['Avg prox ft',r1(S.prox)],['Carry vs target',r1(S.dc)],['Offline (− left)',r1(S.off)]]:[]}
+ ap.drills.push(x);const wasRoutine=ap.routine;pNextDraft();save();toast(d.name+' saved'+(!ap.draft&&wasRoutine?'. Routine done':''));render();window.scrollTo(0,0)}
+function pSkip(){pNextDraft();save();render();window.scrollTo(0,0)}
+function pCancel(){const ap=DB.activePractice,e=ap.draft;if(pCalc(DR(e.k),e).logged&&!confirm('Throw away this drill?'))return;ap.draft=null;ap.queue=[];ap.routine=false;save();render()}
+function pDelEntry(i){const ap=DB.activePractice;if(!confirm('Remove '+ap.drills[i].name+' from this session?'))return;ap.drills.splice(i,1);save();render()}
+function pFinishSheet(){const ap=DB.activePractice;
+ openSheet(`<h2 style="margin-top:0">Finish session?</h2><p>${ap.drills.length} drill${ap.drills.length===1?'':'s'} logged</p>
+ <div class="stack"><button class="btn green block" ${ap.drills.length?'':'disabled'} onclick="pFinish()">Save session</button><button class="btn block" onclick="closeSheet()">Keep practicing</button>
+ <button class="btn danger block" onclick="if(confirm('Discard this session?')){DB.activePractice=null;save();closeSheet();go('practice')}">Discard session</button></div>`)}
+function pFinish(){const ap=DB.activePractice;const s={id:ap.id,date:ap.date,location:ap.location,drills:ap.drills,createdAt:ap.createdAt,finishedAt:Date.now(),pushed:false};
+ const i=DB.practice.findIndex(x=>x.id===s.id);if(i>=0)DB.practice[i]=s;else DB.practice.unshift(s);
+ DB.activePractice=null;save();closeSheet();go('practice',{psess:s.id});pushPractice(s,true)}
+function pReopen(id){if(DB.activePractice&&!confirm('A session is in progress. Replace it?'))return;const s=DB.practice.find(x=>x.id===id);
+ DB.activePractice={...JSON.parse(JSON.stringify(s)),draft:null,queue:[],routine:false};save();go('practice')}
+
+/* ---- push to Sheets ---- */
+function pPayload(s){const base={sessionId:s.id,date:s.date,location:s.location};const gapping=[],combineShots=[];
+ const drills=s.drills.map(x=>{const d=DR(x.k)||{};
+  if(x.shots)x.shots.forEach((sh,i)=>combineShots.push({...base,entryId:x.id,drill:x.name,shot:i+1,round:d.plan?cbRound(d,x.shots,i):'',target:sh.t==='Dr'?'Driver':sh.t,carry:sh.c,carryDiff:sh.t==='Dr'?'':r1(sh.c-sh.t),offline:sh.o,side:Math.abs(sh.o)<0.05?'C':sh.o<0?'L':'R',prox:cbProx(sh)??''}));
+  if(x.gap)Object.keys(x.gap).forEach(cl=>{const g=x.gap[cl];if(g&&(g.carry!=null||g.spin!=null))gapping.push({...base,club:cl,carry:g.carry??'',spin:g.spin??''})});
+  return {...base,entryId:x.id,category:catName(x.cat),drill:x.name,score:x.score??'',max:x.max??'',
+   pct:(d.type==='count'&&x.score!=null&&x.max)?Math.round(x.score/x.max*1000)/1000:'',better:x.score==null?'':(x.lower?'Lower':'Higher'),
+   benchmark:d.bench??'',breakdown:x.brk||'',stats:(x.stats||[]).slice(0,3),notes:x.notes||''}});
+ return {practice:{...base,drills:drills.length},drills,gapping,combineShots}}
+let psyncing=false;
+async function pushPractice(s,quiet){const url=DB.settings.sheetUrl;if(!s)return false;
+ if(!url){if(!quiet)toast('Add your Sheets script URL in Settings');return false}
+ if(!navigator.onLine){if(!quiet)toast('Offline — will push when you have signal');return false}
+ if(inflight.has(s.id)){if(!quiet)toast('Still pushing that session…');return false}
+ inflight.add(s.id);render();toast('Pushing practice to Sheets…',true);
+ try{const res=await fetch(url,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(pPayload(s))});
+  const j=await res.json();
+  if(!j.ok)throw new Error(/round/i.test(j.error||'')?'the sheet script needs Practice.gs and a new deployment':(j.error||'Script error'));
+  s.pushed=true;s.pushedAt=Date.now();save();toast('Practice pushed to Sheets');return true}
+ catch(e){toast('Push failed: '+(e.message||'network'));return false}
+ finally{inflight.delete(s.id);render()}}
+async function pSyncAll(quiet){if(psyncing)return;psyncing=true;let n=0;render();
+ try{for(const s of DB.practice.filter(x=>!x.pushed)){if(await pushPractice(s,true))n++;else break}}finally{psyncing=false}
+ if(n||!quiet)toast(n?`Pushed ${n} session${n>1?'s':''}`:'Nothing pushed — check signal or Settings');render()}
+
+/* ---- restore practice from the sheet ---- */
+function rebuildPractice(j){const by={},gap={},cs={};
+ const sidOf=r=>String(_pick(r,['sessionId','session id'])||'');
+ (j.practice||[]).forEach(r=>{const s=sidOf(r);if(s)(by[s]=by[s]||[]).push(r)});
+ (j.gapping||[]).forEach(r=>{const s=sidOf(r);if(s)(gap[s]=gap[s]||[]).push(r)});
+ (j.combineShots||[]).forEach(r=>{const k=String(_pick(r,['entryId','entry id'])||'');if(k)(cs[k]=cs[k]||[]).push(r)});
+ return Object.keys(by).map(sid=>{const rows=by[sid],f=rows[0];const date=String(_pick(f,['date'])||'').slice(0,10)||today();
+  const drills=rows.map(r=>{const name=String(_pick(r,['drill'])||'');const d=DRILLS.find(x=>x.name.toLowerCase()===name.toLowerCase())||{};
+   const stats=[1,2,3].map(i=>[_pick(r,['stat'+i]),_pick(r,['value'+i])]).filter(t=>t[0]).map(t=>[String(t[0]),t[1]==null?'':t[1]]);
+   const x={id:String(_pick(r,['entryId','entry id'])||uid()),k:d.k||'other',name:name||'Drill',cat:d.cat||'',score:_num(_pick(r,['score'])),max:_num(_pick(r,['max'])),
+    lower:String(_pick(r,['better'])||'').toLowerCase()==='lower'||!!d.lower,brk:String(_pick(r,['breakdown'])||''),stats,notes:String(_pick(r,['notes'])||''),balls:[]};
+   if(cs[x.id])x.shots=cs[x.id].sort((a,b)=>(_num(_pick(a,['shot']))||0)-(_num(_pick(b,['shot']))||0)).map(r=>{const t=String(_pick(r,['target'])||'');return {t:/^d/i.test(t)?'Dr':+t,c:_num(_pick(r,['carry']))||0,o:_num(_pick(r,['offline','offline (− = left)','offlineleft']))||0}});
+   if(d.type==='gapping'&&gap[sid]){x.gap={};gap[sid].forEach(g=>{const cl=String(_pick(g,['club'])||'');if(cl)x.gap[cl]={carry:_num(_pick(g,['carry'])),spin:_num(_pick(g,['spin']))}})}
+   return x});
+  return {id:sid,date,location:/^out/i.test(String(_pick(f,['location'])||''))?'Outside':'Sim',drills,createdAt:new Date(date+'T12:00:00').getTime()||Date.now(),pushed:true,pushedAt:Date.now(),restored:true}})}
+
 /* ===================== SETTINGS ===================== */
 function vSettings(){const s=DB.settings;
   return `<h1>Settings</h1>
   <div class="card"><h2 style="margin-top:0">Google Sheets</h2>
     <label class="f">Apps Script web app URL</label><input class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(s.sheetUrl)}" onchange="DB.settings.sheetUrl=this.value.trim();save()">
-    <p class="sub" style="margin:8px 0 0">Rounds push here when you tap Push, and automatically when you come back online.</p>
+    <p class="sub" style="margin:8px 0 0">Rounds and practice sessions push here when you finish or tap Push, and automatically when you come back online.</p>
     <button class="btn small block" style="margin-top:10px" ${testing?'disabled':''} onclick="testSheet()">${testing?'<span class="spin"></span>Testing connection…':'Test connection'}</button>
   </div>
   <div class="card"><h2 style="margin-top:0">Scorecard scanning <span class="sub" style="font-weight:400">optional</span></h2>
@@ -983,8 +1395,8 @@ function vSettings(){const s=DB.settings;
     <label class="f">Entry</label><div class="seg"><button class="${s.defaultMode==='shots'?'on':''}" onclick="DB.settings.defaultMode='shots';save();render()">Every shot</button><button class="${s.defaultMode==='quick'?'on':''}" onclick="DB.settings.defaultMode='quick';save();render()">Quick</button></div>
   </div>
   <div class="card"><h2 style="margin-top:0">Restore from Google Sheets</h2>
-    <p class="sub" style="margin:0 0 10px">Rebuilds rounds, holes and shots from your sheet. Rounds already on this phone are skipped, so it's safe to run twice. Games and players aren't stored in the sheet.</p>
-    <button class="btn block" ${restoring?'disabled':''} onclick="restoreFromSheets()">${restoring?'<span class="spin"></span>Restoring…':'Restore rounds from Sheets'}</button>
+    <p class="sub" style="margin:0 0 10px">Rebuilds rounds, holes, shots and practice sessions from your sheet. Anything already on this phone is skipped, so it's safe to run twice. Games and players aren't stored in the sheet.</p>
+    <button class="btn block" ${restoring?'disabled':''} onclick="restoreFromSheets()">${restoring?'<span class="spin"></span>Restoring…':'Restore from Sheets'}</button>
   </div>
   <div class="card"><h2 style="margin-top:0">Backup</h2>
     <p class="sub" style="margin:0 0 10px">Everything lives on this phone. Export a backup now and then.</p>
@@ -996,7 +1408,7 @@ function vSettings(){const s=DB.settings;
     <p class="sub" style="margin:0 0 10px">Twenty made-up rounds so you can see the stats and the sheet. Remove them before you start logging for real.</p>
     <div class="stack">${DB.rounds.some(r=>r.sample)?`<button class="btn block" onclick="removeSamples()">Remove sample rounds</button>`:`<button class="btn block" onclick="loadSamples()">Load 20 sample rounds</button>`}</div>
   </div>
-  <p class="sub" style="text-align:center">Golf Log v2 · ${DB.rounds.length} rounds · ${DB.courses.length} courses</p>`;
+  <p class="sub" style="text-align:center">Golf Log v2 · ${DB.rounds.length} rounds · ${DB.practice.length} practice sessions · ${DB.courses.length} courses</p>`;
 }
 let testing=false;
 async function testSheet(){if(testing)return;const url=DB.settings.sheetUrl;if(!url)return toast('Paste the script URL first');
@@ -1093,11 +1505,14 @@ async function restoreFromSheets(){
     if(!j.ok)throw new Error(j.error||'Export failed');
     if(j.holes===undefined)throw new Error('Script is still the old version — redeploy as a new version');
     const rebuilt=rebuildFromSheet(j).filter(x=>!DB.rounds.some(y=>y.id===x.id));
-    if(!rebuilt.length){toast(j.holes.length?'Everything in the sheet is already in the app':'No hole rows found in the Holes tab');return}
-    if(!confirm(`Found ${rebuilt.length} round${rebuilt.length>1?'s':''} in the sheet. Add ${rebuilt.length>1?'them':'it'} to this phone?`))return;
-    coursesFromRounds(rebuilt);
-    DB.rounds.push(...rebuilt);save();
-    toast(`Restored ${rebuilt.length} round${rebuilt.length>1?'s':''}`);go('rounds');
+    const prs=Array.isArray(j.practice)?rebuildPractice(j).filter(x=>!DB.practice.some(y=>y.id===x.id)):[];
+    if(!rebuilt.length&&!prs.length){toast(j.holes.length||(j.practice||[]).length?'Everything in the sheet is already in the app':'No rounds or practice found in the sheet');return}
+    const what=[rebuilt.length?`${rebuilt.length} round${rebuilt.length>1?'s':''}`:'',prs.length?`${prs.length} practice session${prs.length>1?'s':''}`:''].filter(Boolean).join(' and ');
+    if(!confirm(`Found ${what} in the sheet. Add to this phone?`))return;
+    if(rebuilt.length){coursesFromRounds(rebuilt);DB.rounds.push(...rebuilt)}
+    if(prs.length)DB.practice.push(...prs);
+    save();
+    toast(`Restored ${what}`);go(rebuilt.length?'rounds':'practice');
   }catch(e){toast('Restore failed: '+(e.message||e))}
   finally{restoring=false;if(view==='settings')render()}
 }
