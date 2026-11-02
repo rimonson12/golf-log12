@@ -4,112 +4,159 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Golf Log">
-<meta name="theme-color" content="#F9F9F6">
+<meta name="theme-color" content="#0F3D26">
 <meta name="color-scheme" content="light">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@500;700&display=swap">
 <title>Golf Log</title>
 <style>
 :root{
-  --paper:#F9F9F6; --card:#FFFFFF; --ink:#182119; --mute:#6A716C; --line:#E1E4DE;
-  --green:#1F6B3E; --green-soft:#E4EFE7; --red:#B0392E; --red-soft:#F7E6E3;
-  --amber:#A8701A; --amber-soft:#F6ECD9; --tap:54px; --r:12px;
+  --paper:#EEF0F2; --card:#FFFFFF; --ink:#0F3D26; --mute:#55606E; --line:#E3E6EA; --edge:#C3CBD6;
+  --deep:#0F3D26; --deep2:#2F6B4A; --soft:#BFD9C8; --panel:#D8E7DB; --yellow:#F5C518;
+  --green:#1F7A48; --green-soft:#DCEFE1; --red:#B3261E; --red-soft:#F8E1DE;
+  --amber:#8A5A00; --amber-soft:#F6ECD9; --tap:54px; --r:16px;
   --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  --disp:"Barlow Condensed","Avenir Next Condensed","DIN Condensed","Arial Narrow",system-ui,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{height:100%}
-html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.4 "Barlow",-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif}
 body{min-height:100%;-webkit-overflow-scrolling:touch}
 body{padding-top:var(--sat);-webkit-user-select:none;user-select:none}
+/* solid status-bar strip so the clock stays readable over the green band */
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--sat);background:var(--deep);z-index:30}
 input,textarea,select{font:inherit;color:inherit;-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--green);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
 #app{padding:12px 14px calc(96px + var(--sab));max-width:560px;margin:0 auto;min-height:100%}
 .shotscroll{max-height:38vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-h1{font-size:26px;font-weight:700;margin:6px 0 14px;letter-spacing:-0.02em}
-h2{font-size:17px;font-weight:600;margin:20px 0 8px}
+h1{font-family:var(--disp);font-size:40px;line-height:1;font-weight:700;letter-spacing:.02em;text-transform:uppercase;margin:8px 0 14px}
+h2{font-family:var(--disp);font-size:19px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:20px 0 8px}
 .sub{color:var(--mute);font-size:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.card{background:var(--card);border:0;border-radius:18px;padding:14px;margin-bottom:12px}
 .flat{border:0;background:none;padding:0;border-top:1px solid var(--line)}
 .row{display:flex;align-items:center;gap:10px}
 .row.between{justify-content:space-between}
 .grow{flex:1;min-width:0}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border-radius:8px;font-weight:600;border:1px solid var(--line);background:var(--card)}
-.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border-radius:14px;font-weight:700;border:1px solid var(--edge);background:var(--card)}
+.btn.primary{background:var(--deep);color:#fff;border-color:var(--deep)}
 .btn.green{background:var(--green);color:#fff;border-color:var(--green)}
 .btn.danger{color:var(--red);border-color:var(--red);border-style:dashed;background:none}
-.btn.small{min-height:36px;padding:0 12px;font-size:14px;font-weight:600}
+.btn.small{min-height:40px;padding:0 14px;font-size:14px;font-weight:700;border-radius:999px}
 .btn.block{width:100%}
 .btn:disabled{opacity:.45}
 .stack{display:flex;flex-direction:column;gap:10px}
-.seg{display:flex;background:#ECEEEA;border-radius:10px;padding:3px}
-.seg button{flex:1;min-height:40px;border-radius:8px;font-weight:600;color:var(--mute)}
-.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+/* segmented pills */
+.seg{display:flex;gap:6px}
+.seg button{flex:1;min-height:44px;border-radius:999px;font-weight:700;color:var(--ink);background:var(--card);border:1px solid var(--edge)}
+.seg button.on{background:var(--deep);color:#fff;border-color:var(--deep)}
+/* underline tabs on the green band */
+.seg.tabs{gap:4px}
+.seg.tabs button,.seg.tabs button.on{background:none;border:0;border-radius:0;font-family:var(--disp);font-size:18px;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);box-shadow:inset 0 -4px 0 transparent}
+.seg.tabs button.on{color:#fff;box-shadow:inset 0 -4px 0 var(--yellow)}
 label.f{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
-.in{width:100%;min-height:46px;padding:0 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+.in{width:100%;min-height:46px;padding:0 12px;border:1.5px solid var(--edge);border-radius:12px;background:#fff}
 textarea.in{min-height:80px;padding:10px 12px}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
 .badge.real{background:var(--green-soft);color:var(--green)}
 .badge.sim{background:var(--amber-soft);color:var(--amber)}
-.badge.gray{background:#ECEEEA;color:var(--mute)}
+.badge.gray{background:var(--line);color:var(--mute)}
 .badge.red{background:var(--red-soft);color:var(--red)}
 .list .item{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);width:100%;text-align:left}
 .list .item:last-child{border-bottom:0}
 .empty{padding:30px 16px;text-align:center;color:var(--mute)}
 /* tab bar */
-#tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(247,247,244,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;padding-bottom:var(--sab);z-index:5}
-#tabs button{flex:1;min-height:60px;font-size:11px;font-weight:600;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
-#tabs button.on{color:var(--green)}
+#tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;box-shadow:0 -1px 0 var(--line);display:flex;gap:2px;padding:6px 6px calc(8px + var(--sab));z-index:5}
+#tabs button{flex:1;min-height:56px;border-radius:16px;font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+#tabs button.on{background:var(--green-soft);color:var(--ink)}
 #tabs svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+/* green band: hole scoreboard and stats header */
+.band{background:var(--deep);color:#fff;margin:-12px -14px 14px;padding:16px 16px 14px;border-radius:0 0 24px 24px}
+.band h1{color:#fff;margin:2px 0 8px;font-size:44px}
+.bandtop{display:flex;align-items:center;gap:6px}
+.bandcourse{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.1em;text-transform:uppercase}
+.gbtn{min-height:44px;padding:0 14px;border:1px solid var(--deep2);border-radius:999px;color:#fff;font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase}
+.sb{margin-top:4px}
+.sbrow{display:grid;grid-template-columns:var(--cols);align-items:center;row-gap:2px}
+.sbl,.sbt{font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.1em;color:var(--soft)}
+.sbt{text-align:center}
+.sbh{height:38px;border-radius:5px;font-family:var(--disp);font-weight:700;font-size:17px;color:#fff;display:flex;align-items:center;justify-content:center}
+.sbh.cur{background:var(--yellow);color:var(--deep)}
+.sbp{text-align:center;font-family:var(--disp);font-weight:600;font-size:16px;color:var(--soft)}
+.sbp.tot{font-weight:700}
+.sbs{display:flex;justify-content:center;padding:2px 0}
+.sb .mark{width:26px;height:26px;font-family:var(--disp);font-weight:700;font-size:18px;color:#fff}
+.sb .mark.e{color:#fff}
+.sb .mark.b,.sb .mark.bb{color:#9BE7B4}
+.sb .mark.b::after,.sb .mark.bb::after,.sb .mark.bb::before{border-color:#9BE7B4}
+.sb .mark.o,.sb .mark.oo{color:#FF8C7E}
+.sb .mark.o::after,.sb .mark.oo::after,.sb .mark.oo::before{border-color:#FF8C7E}
+.bandfoot{white-space:nowrap;gap:8px;display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-family:var(--disp);font-weight:600;font-size:15px;letter-spacing:.08em;color:var(--soft);text-transform:uppercase}
+.bandfoot b{color:#fff;font-weight:700}
+.sbswap{flex:none;min-height:40px;padding:0 10px;color:#fff;font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+.hband{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);width:calc(100% + 32px);margin:6px -16px -14px;padding:12px 16px 16px;text-align:left;color:#fff;align-items:end}
+.hband>div{padding-left:12px;border-left:1px solid var(--deep2)}
+.hband>div:first-child{padding-left:0;border-left:0}
+.hband b{display:block;font-family:var(--disp);font-weight:700;font-size:34px;line-height:1}
+.hband b.big{font-size:66px;line-height:.9;color:var(--yellow)}
+.hband span{display:block;margin-top:4px;font-family:var(--disp);font-weight:600;font-size:14px;letter-spacing:.1em;color:var(--soft);text-transform:uppercase}
 /* hole screen */
-.holehead{display:flex;align-items:flex-end;justify-content:space-between;margin:2px 0 12px}
-.holehead .hn{font-size:60px;line-height:.9;font-weight:800;letter-spacing:-0.05em}
-.holehead .meta{color:var(--mute);font-size:14px;margin-top:4px}
+.holehead{display:flex;align-items:flex-end;justify-content:space-between;margin:2px 4px 12px}
+.holehead .hn{white-space:nowrap;font-family:var(--disp);font-size:60px;line-height:.9;font-weight:700;letter-spacing:.01em;text-transform:uppercase}
+.holehead .meta{color:var(--mute);font-size:14px;margin-top:6px}
+.holehead .hmeta{text-align:right;font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.06em;line-height:1.15;text-transform:uppercase}
 .holehead .score{text-align:right}
 .holehead .score b{font-size:44px;line-height:1;font-weight:800;letter-spacing:-0.03em;display:block}
 .holehead .score span{font-size:13px;color:var(--mute)}
+.prompt{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.06em;text-transform:uppercase}
 .nav{display:flex;gap:8px;margin:0 0 12px}
-.nav .btn{flex:1}
+.nav .btn{flex:1;min-height:56px;border-radius:16px;border:0;background:#fff;font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.nav .btn.primary{background:var(--deep);color:#fff}
+.nav .btn.green{background:var(--green);color:#fff}
+.shotscroll.flat{border-top:2px solid var(--ink)}
 .shotrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .shotrow .idx{width:22px;color:var(--mute);font-size:13px}
-.shotrow .club{font-weight:700;width:44px}
-.shotrow .res{flex:1}
+.shotrow .club{font-family:var(--disp);font-weight:700;font-size:22px;width:44px;text-transform:uppercase}
+.shotrow .res{flex:1;font-weight:700}
 .shotrow .res.good{color:var(--green)} .shotrow .res.pen{color:var(--red)}
-.shotrow .det{font-size:12px;color:var(--mute)}
+.shotrow .det{font-size:12px;color:var(--mute);font-weight:500}
 .shotrow button.x{min-width:40px;min-height:40px;color:var(--mute);font-size:20px}
-.clubs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.clubs button{min-height:46px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:15px}
-.clubs button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
-.target{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
-.target button{min-height:58px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:16px}
-.target .good{background:var(--ink);color:#fff;border-color:var(--ink)}
-.target .pen{grid-column:1/4;background:none;color:var(--red);border:1px dashed var(--red);min-height:44px}
+.clubs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.clubs button{min-height:46px;padding:0;border-radius:14px;background:#fff;font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:.04em;text-transform:uppercase}
+.clubs button.sel{background:var(--deep);color:#fff}
+/* radial result picker */
+.target{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:center;justify-items:center;margin-top:10px;background:var(--panel);border-radius:26px;padding:12px}
+.target button{width:100%;min-height:52px;border-radius:999px;background:#fff;color:var(--ink);font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.08em;text-transform:uppercase}
+.target .good{width:104px;height:104px;min-height:104px;border-radius:50%;background:var(--red);color:#fff;font-size:30px}
+.target .pen{grid-column:1/4;background:transparent;color:var(--red);border:1.5px dashed var(--red);min-height:46px;border-radius:14px;margin-top:4px;font-size:18px}
 .target .ph{visibility:hidden}
+.target .kpi{width:100%;text-align:center}
 .step{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
-.step .ctl{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.step .ctl{display:flex;align-items:center;gap:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .step .ctl button{width:52px;height:46px;font-size:24px;font-weight:500}
-.step .ctl b{width:44px;text-align:center;font-size:20px}
+.step .ctl b{width:44px;text-align:center;font-family:var(--disp);font-size:24px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chips button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-weight:600}
-.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chips button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--edge);background:#fff;font-weight:700}
+.chips button.on{background:var(--deep);color:#fff;border-color:var(--deep)}
 .chips button.on.bad{background:var(--red);border-color:var(--red)}
 .chips button.on.good{background:var(--green);border-color:var(--green)}
 /* stats */
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-.kpi b{display:block;font-size:24px;font-weight:800;letter-spacing:-0.03em}
-.kpi span{font-size:12px;color:var(--mute)}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kpi{background:var(--card);border:0;border-radius:16px;padding:8px 12px;min-width:0;overflow:hidden}
+.kpi b{display:block;font-family:var(--disp);font-size:32px;line-height:1.05;font-weight:700}
+.kpi span{font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--mute);text-transform:uppercase}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:7px 4px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-th{font-weight:600;color:var(--mute);font-size:12px}
+th{font-family:var(--disp);font-weight:700;color:var(--mute);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 th:first-child,td:first-child{text-align:left}
 .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.sheet{position:fixed;inset:0;background:rgba(22,36,28,.45);z-index:10;display:flex;align-items:flex-end;justify-content:center}
-.sheet .pane{background:var(--paper);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + var(--sab));max-height:88vh;overflow:auto}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + var(--sab));background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none}
+.sheet{position:fixed;inset:0;background:rgba(15,40,26,.5);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet .pane{background:var(--paper);width:100%;max-width:560px;border-radius:24px 24px 0 0;padding:16px 16px calc(20px + var(--sab));max-height:88vh;overflow:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + var(--sab));background:var(--deep);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:700;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;margin-right:8px;vertical-align:-2px;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -118,7 +165,7 @@ th:first-child,td:first-child{text-align:left}
 .holes-grid{display:grid;grid-template-columns:34px 1fr 1fr;gap:6px;align-items:center;font-size:14px}
 .holes-grid input{min-height:40px;padding:0 8px;text-align:center}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-.dot.ok{background:var(--green)} .dot.wait{background:var(--amber)}
+.dot.ok{background:var(--green)} .dot.wait{background:#D9A21B}
 /* scorecard notation: circle=birdie, double circle=eagle (bold), square=bogey, double square=double+ (bold) */
 .mark{position:relative;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
 .mark::before,.mark::after{content:"";position:absolute;border:1.5px solid transparent;pointer-events:none}
@@ -129,32 +176,32 @@ th:first-child,td:first-child{text-align:left}
 .mark.bb::after,.mark.oo::after{inset:-1px} .mark.bb::before,.mark.oo::before{inset:3px}
 .mark.bb,.mark.oo{font-weight:800}
 .strip{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin:0 0 14px}
-.strip button{aspect-ratio:1;border:1px solid var(--line);border-radius:4px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.strip button{aspect-ratio:1;border:1px solid var(--line);border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
 .strip button.cur{border:2px solid var(--ink)}
 .strip .mark{width:22px;height:22px;font-size:13px}
 .scoretbl .mark{width:24px;height:24px;font-size:13px}
 /* practice */
 .pbtns{display:grid;gap:8px;margin:12px 0 10px}
-.pbtns button{min-height:76px;border-radius:10px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:17px;padding:0 4px;line-height:1.15}
+.pbtns button{min-height:76px;border-radius:14px;border:1px solid var(--edge);background:#fff;font-weight:700;font-size:17px;padding:0 4px;line-height:1.15}
 .pbtns button.good{background:var(--green-soft);border-color:var(--green);color:var(--green)}
 .pbtns button:active{transform:scale(.97)}
 .pbtns button:disabled{opacity:.4}
 .balls{display:flex;flex-wrap:wrap;gap:6px}
-.balls span{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;line-height:1}
+.balls span{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--edge);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;line-height:1}
 .balls span.g{background:var(--green);border-color:var(--green);color:#fff}
 .balls span.r{background:var(--red-soft);border-color:var(--red);color:var(--red)}
 .balls span.cur{border-color:var(--ink);border-width:2px}
 .rungs{display:flex;flex-wrap:wrap;gap:5px}
-.rungs span{min-width:40px;padding:6px 0;text-align:center;border-radius:6px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+.rungs span{min-width:40px;padding:6px 0;text-align:center;border-radius:8px;border:1px solid var(--edge);background:#fff;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
 .rungs span.g{background:var(--green);border-color:var(--green);color:#fff}
 .rungs span.cur{border:2px solid var(--ink)}
 .kfields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.kfield{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;text-align:left}
+.kfield{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 12px;border:1.5px solid var(--edge);border-radius:12px;background:#fff;text-align:left}
 .kfield b{font-size:30px;line-height:1.1;font-weight:800}
 .kfield.on{border:2px solid var(--ink)}
 .kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
-.kpad button{min-height:52px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:22px;font-weight:600}
-.kpad button:active{background:#ECEEEA}
+.kpad button{min-height:52px;border-radius:12px;border:1px solid var(--edge);background:#fff;font-size:22px;font-weight:600}
+.kpad button:active{background:var(--line)}
 .tscroll tr[onclick]{cursor:pointer}
 .split{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;background:#EEF0EC}
 .split span{display:block;min-width:3px}
@@ -226,6 +273,17 @@ function markCls(toPar){return toPar<=-2?'bb':toPar===-1?'b':toPar===0?'e':toPar
 function markHtml(h){const c=holeCalc(h);return c.logged?`<span class="mark ${markCls(c.toPar)}">${c.score}</span>`:'<span class="mark"></span>'}
 function stripHtml(r,cur,onclick){return `<div class="strip">${r.holes.map((h,i)=>`<button class="${i===cur?'cur':''}" ${onclick?`onclick="${onclick}(${i})"`:''} aria-label="Hole ${h.n}">${markHtml(h)}</button>`).join('')}</div>`}
 function jumpHole(i){sub.club=null;sub.detail=null;DB.active.cur=i;save();render()}
+/* scoreboard for the hole screen: nine holes at a time (HOLE / PAR / SCORE rows) */
+function scoreboardHtml(r,cur){
+  const page=Math.floor(cur/9),a=page*9,hs=r.holes.slice(a,a+9);
+  const tot=hs[0].n<=9?'OUT':'IN';
+  let par=0,sc=0,any=0;
+  hs.forEach(h=>{par+=h.par;const c=holeCalc(h);if(c.logged){sc+=c.score;any++}});
+  return `<div class="sb" style="--cols:44px repeat(${hs.length},minmax(0,1fr)) 40px">
+    <div class="sbrow"><span class="sbl">HOLE</span>${hs.map((h,i)=>`<button class="sbh ${a+i===cur?'cur':''}" onclick="jumpHole(${a+i})" aria-label="Hole ${h.n}">${h.n}</button>`).join('')}<span class="sbt">${tot}</span></div>
+    <div class="sbrow"><span class="sbl">PAR</span>${hs.map(h=>`<span class="sbp">${h.par}</span>`).join('')}<span class="sbp tot">${par}</span></div>
+    <div class="sbrow"><span class="sbl">SCORE</span>${hs.map(h=>`<span class="sbs">${markHtml(h)}</span>`).join('')}<span class="sbp tot">${any?sc:'—'}</span></div>
+  </div>`}
 function roundCalc(r){const t=roundCalc0(r);const hx=r.id?hcpHistory(r.type).map[r.id]:null;t.diff=hx?hx.diff:null;t.ags=null;return t}
 function roundCalc0(r){
   const hs=r.holes.map(h=>({h,c:holeCalc(h)})).filter(x=>x.c.logged);
@@ -258,13 +316,20 @@ const ICONS={
   courses:'<svg viewBox="0 0 24 24"><path d="M12 22s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
   practice:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>',
   games:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg>',
+  more:'<svg viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>',
   settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'};
 function go(v,s={}){view=v;sub=s;render();window.scrollTo(0,0)}
 function render(){
-  document.getElementById('tabs').innerHTML=['play','rounds','practice','games','stats','courses','settings'].map(v=>`<button class="${view===v?'on':''}" onclick="go('${v}')">${ICONS[v]}<span>${v[0].toUpperCase()+v.slice(1)}</span></button>`).join('');
+  const act=(view==='courses'||view==='settings')?'more':view;
+  document.getElementById('tabs').innerHTML=['play','rounds','practice','games','stats','more'].map(v=>`<button class="${act===v?'on':''}" onclick="go('${v}')">${ICONS[v]}<span>${v[0].toUpperCase()+v.slice(1)}</span></button>`).join('');
   const app=document.getElementById('app');
-  app.innerHTML=({play:vPlay,rounds:vRounds,practice:vPractice,games:vGames,stats:vStats,courses:vCourses,settings:vSettings})[view]();
+  app.innerHTML=({play:vPlay,rounds:vRounds,practice:vPractice,games:vGames,stats:vStats,more:vMore,courses:vCourses,settings:vSettings})[view]();
 }
+function vMore(){return `<h1>More</h1>
+  <div class="card list" style="padding:0 14px">
+    <button class="item" onclick="go('courses')"><div class="grow"><div style="font-weight:700">Courses</div><div class="sub">${DB.courses.length} saved · pars, yardages, rating and slope</div></div><span class="sub">›</span></button>
+    <button class="item" onclick="go('settings')"><div class="grow"><div style="font-weight:700">Settings</div><div class="sub">Sheets link, clubs, backup and restore</div></div><span class="sub">›</span></button>
+  </div>`}
 
 /* ===================== PLAY ===================== */
 function vPlay(){
@@ -278,7 +343,7 @@ function vPlay(){
     ${(()=>{const c=cs.find(x=>x.id===f.courseId);if(!c||!c.tees.length)return '';if(!f.teeId||!c.tees.find(t=>t.id===f.teeId))f.teeId=c.tees[0].id;
       return c.tees.length===1?`<p class="sub" style="margin:6px 0 0">${esc(c.tees[0].name)} tees${c.tees[0].rating?' · '+c.tees[0].rating+' / '+c.tees[0].slope:''}</p>`
       :`<label class="f">Tees</label><div class="seg">${c.tees.map(t=>`<button class="${t.id===f.teeId?'on':''}" onclick="sub.form.teeId='${t.id}';render()">${esc(t.name)}</button>`).join('')}</div>`})()}
-    ${cs.length?'':'<p class="sub" style="margin:8px 0 0">Add a course in the Courses tab first, or start without one (par 4s, edit as you go).</p>'}
+    ${cs.length?'':'<p class="sub" style="margin:8px 0 0">Add a course in More › Courses first, or start without one (par 4s, edit as you go).</p>'}
     <label class="f">Date</label><input class="in" type="date" value="${f.date}" onchange="sub.form.date=this.value">
     <label class="f">Round type</label>
     <div class="seg"><button class="${f.type==='Real'?'on':''}" onclick="sub.form.type='Real';render()">Real</button><button class="${f.type==='Sim'?'on':''}" onclick="sub.form.type='Sim';render()">Simulator</button></div>
@@ -302,14 +367,18 @@ function startRound(){
 function vHole(){
   const r=DB.active,h=r.holes[r.cur],c=holeCalc(h),rc=roundCalc(r);
   const last=r.cur===r.holes.length-1;
-  return `<div class="row between" style="margin-bottom:6px">
-    <div class="sub">${esc(r.courseName)} <span class="badge ${r.type==='Sim'?'sim':'real'}">${r.type}</span></div>
-    <div class="row" style="gap:6px"><button class="btn small" onclick="toggleHoleMode()">${h.mode==='shots'?'Quick entry':'Shot entry'}</button><button class="btn small" onclick="finishSheet()">Finish</button></div>
+  return `<div class="band">
+    <div class="bandtop"><span class="bandcourse">${esc(r.courseName)}</span>
+      <button class="gbtn" onclick="toggleHoleMode()">${h.mode==='shots'?'Quick':'Shots'}</button>
+      <button class="gbtn" onclick="finishSheet()">Finish</button></div>
+    ${scoreboardHtml(r,r.cur)}
+    <div class="bandfoot"><span>${r.type==='Sim'?'Simulator':'Real'} · thru ${rc.holes}</span>
+      ${r.holes.length>9?`<button class="sbswap" onclick="jumpHole(${r.cur<9?9:0})">${r.cur<9?'Back nine ›':'‹ Front nine'}</button>`:''}
+      <b>${rc.holes?fmtPar(rc.toPar):'E'} to par</b></div>
   </div>
-  ${stripHtml(r,r.cur,'jumpHole')}
   <div class="holehead">
-    <div><div class="hn num">${h.n}</div><div class="meta">Par <b>${h.par}</b> · ${h.yds||'–'} yds <button class="btn small" style="margin-left:6px;min-height:28px;padding:0 8px" onclick="editHoleInfo()">edit</button></div></div>
-    <div class="score"><b class="num">${c.logged?c.score:'–'}</b><span>${c.logged?fmtPar(c.toPar):'this hole'} · round ${rc.holes?fmtPar(rc.toPar):'E'} thru ${rc.holes}</span></div>
+    <div><div class="hn num">Hole ${h.n}</div>${c.logged?`<div class="meta">This hole: <b>${c.score}</b> (${fmtPar(c.toPar)})</div>`:''}</div>
+    <div class="hmeta">Par ${h.par}<br>${h.yds||'–'} yds <button class="btn small" style="margin-left:4px" onclick="editHoleInfo()">edit</button></div>
   </div>
   ${h.mode==='shots'?vShotsEntry(h,c):vQuickEntry(h,c)}
   <div class="nav" style="margin-top:14px">
@@ -330,7 +399,7 @@ function vShotsEntry(h,c){
   </div>
   ${h.shots.length?`<p class="sub" style="margin:-4px 0 10px;font-size:13px">${c.holedOut?`Holed out in ${c.score}`:`On the green in ${h.shots.length+c.pen}, ${h.putts} putt${h.putts===1?'':'s'}`}${c.gir===false&&h.shots.length+c.pen>h.par-2?' · green missed':''}</p>`:''}
   ${sub.detail!=null&&h.shots[sub.detail]?vShotDetailPanel(h,sub.detail)
-  :sel?`<div class="row between"><b>${esc(sel)} — where did it go?</b><button class="btn small" onclick="sub.club=null;render()">Cancel</button></div>
+  :sel?`<div class="row between"><b class="prompt">${esc(sel)} — where did it go?</b><button class="btn small" onclick="sub.club=null;render()">Cancel</button></div>
     <div class="target">
       <button class="ph"></button><button onclick="addShot('long')">Long</button><button class="ph"></button>
       <button onclick="addShot('left')">Left</button><button class="good" onclick="addShot('good')">Good</button><button onclick="addShot('right')">Right</button>
@@ -348,7 +417,7 @@ function addShot(result){const h=DB.active.holes[DB.active.cur];const prev=h.sho
   h.shots.push({club:sub.club,result,lie,strike:null,prox:null});sub.club=null;sub.detail=h.shots.length-1;save();render();keepInView()}
 function vShotDetailPanel(h,i){const s=h.shots[i];
   const chips=(k,opts)=>`<div class="chips">${opts.map(o=>`<button class="${s[k]===o?'on':''}" onclick="setShotInline(${i},'${k}',${s[k]===o?'null':`'${o}'`})">${o}</button>`).join('')}</div>`;
-  return `<div class="card" style="border-color:var(--ink)">
+  return `<div class="card" style="border:2px solid var(--ink)">
     <div class="row between"><b>Shot ${i+1} · ${esc(s.club)} · <span style="color:${s.result==='good'?'var(--green)':s.result==='pen'?'var(--red)':'inherit'}">${RESULTS[s.result]}</span></b><button class="btn small" onclick="delShot(${i})">Undo</button></div>
     <label class="f">Lie</label>${chips('lie',LIES)}
     <label class="f">Strike</label>${chips('strike',strikesFor(s.club))}
@@ -404,7 +473,7 @@ function vRounds(){
   return `<div class="row between"><h1>Rounds</h1>${pendingCount()?`<button class="btn small green" ${syncing?'disabled':''} onclick="syncAll()">${syncing?'<span class="spin"></span>Pushing…':'Push '+pendingCount()+' to Sheets'}</button>`:''}</div>
   ${rs.length?`<div class="card list" style="padding:0 14px">${rs.map(r=>{const c=roundCalc(r);return `<button class="item" onclick="go('rounds',{open:'${r.id}'})">
     <span class="dot ${r.pushed?'ok':'wait'}" title="${r.pushed?'Pushed':'Not pushed'}"></span>
-    <div class="grow"><div style="font-weight:600">${esc(r.courseName)}</div><div class="sub">${r.date} · ${c.holes} holes · ${r.mode==='shots'?'shots':'quick'}</div></div>
+    <div class="grow"><div style="font-weight:700">${esc(r.courseName)}</div><div class="sub">${r.date} · ${c.holes} holes · ${r.mode==='shots'?'shots':'quick'}</div></div>
     <span class="badge ${r.type==='Sim'?'sim':'real'}">${r.type}</span>
     <b class="num" style="font-size:20px;width:70px;text-align:right">${c.score} <span class="sub" style="font-weight:600">${fmtPar(c.toPar)}</span></b></button>`}).join('')}</div>`
   :`<div class="card empty">No rounds yet. Start one in Play.</div>`}`;
@@ -522,15 +591,15 @@ function idxSvg(pts){pts=pts.slice(-30);const W=320,H=110,pl=28,pr=8,pt=8,pb=16;
   let mn=Math.floor(Math.min(...pts.map(p=>p.v))-1),mx=Math.ceil(Math.max(...pts.map(p=>p.v))+1);
   const x=i=>pl+i*(W-pl-pr)/Math.max(1,pts.length-1),y=v=>pt+(mx-v)/(mx-mn)*(H-pt-pb);
   const grid=[];for(let g=mn;g<=mx;g+=Math.max(1,Math.round((mx-mn)/4)))grid.push(`<line x1="${pl}" x2="${W-pr}" y1="${y(g)}" y2="${y(g)}" stroke="#E4E7E2"/><text x="${pl-4}" y="${y(g)+3}" font-size="9" fill="#6B7770" text-anchor="end">${g}</text>`);
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}<path d="${pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.v).toFixed(1)).join(' ')}" fill="none" stroke="#1F6B3E" stroke-width="2"/>${pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2.5" fill="#1F6B3E"/>`).join('')}<text x="${pl}" y="${H-3}" font-size="9" fill="#6B7770">${pts[0].date}</text><text x="${W-pr}" y="${H-3}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].date}</text></svg>`}
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}<path d="${pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.v).toFixed(1)).join(' ')}" fill="none" stroke="#1F7A48" stroke-width="2"/>${pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2.5" fill="#1F7A48"/>`).join('')}<text x="${pl}" y="${H-3}" font-size="9" fill="#6B7770">${pts[0].date}</text><text x="${W-pr}" y="${H-3}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].date}</text></svg>`}
 
 /* ===================== STATS ===================== */
 function vStats(){
   if(sub.hcp)return vHandicap();
   const f=sub.filter||'All';
   const rs=DB.rounds.filter(r=>f==='All'||r.type===f).sort((a,b)=>a.date.localeCompare(b.date)||a.createdAt-b.createdAt);
-  const seg=`<div class="seg" style="margin-bottom:12px">${['Real','Sim','All'].map(x=>`<button class="${f===x?'on':''}" onclick="sub.filter='${x}';render()">${x==='All'?'Combined':x==='Sim'?'Simulator':x}</button>`).join('')}</div>`;
-  if(!rs.length)return `<h1>Stats</h1>${seg}<div class="card empty">No ${f==='All'?'':f.toLowerCase()+' '}rounds yet.</div>`;
+  const seg=`<div class="seg tabs">${['Real','Sim','All'].map(x=>`<button class="${f===x?'on':''}" onclick="sub.filter='${x}';render()">${x==='All'?'Combined':x==='Sim'?'Simulator':x}</button>`).join('')}</div>`;
+  if(!rs.length)return `<div class="band"><h1>Stats</h1>${seg}</div><div class="card empty">No ${f==='All'?'':f.toLowerCase()+' '}rounds yet.</div>`;
   const T={holes:0,toPar:0,putts:0,pen:0,firH:0,firO:0,girH:0,girO:0,scrH:0,scrO:0,threeP:0,p3:[0,0],p4:[0,0],p5:[0,0]};
   const club={};let proxN=0,proxSum=0;
   const diffs=[];const gm={long:0,left:0,right:0,short:0,pen:0};let gmN=0;
@@ -540,10 +609,9 @@ function vStats(){
   });
   const per18=v=>T.holes?v/T.holes*18:null;
   const order=DB.settings.clubs;const clubs=Object.keys(club).sort((a,b)=>order.indexOf(a)-order.indexOf(b));
-  return `<h1>Stats</h1>${seg}
-  ${(()=>{const H=hcpHistory(f);return `<button class="card" style="width:100%;text-align:left" onclick="sub.hcp=1;sub.htype='${f}';render()">
-    <div class="row between" style="margin-bottom:6px"><span class="sub">Handicap (avg of last ${HCP_WINDOW})</span><span class="sub">›</span></div>
-    <div class="row" style="gap:0">${[['handicap',H.index],['avg gross',H.avgGross],['avg net',H.avgNet]].map(([l,v],i)=>`<div class="grow" style="${i?'border-left:1px solid var(--line);padding-left:12px':''}"><b class="num" style="font-size:30px;line-height:1.1;letter-spacing:-.03em;display:block">${v==null?'–':fx(v)}</b><span class="sub" style="font-size:12px">${l}</span></div>`).join('')}</div></button>`})()}
+  return `<div class="band"><h1>Stats</h1>${seg}
+  ${(()=>{const H=hcpHistory(f);const v=x=>x==null?'–':fx(x);return `<button class="hband" onclick="sub.hcp=1;sub.htype='${f}';render()"><div><b class="big num">${v(H.index)}</b><span>Handicap · last ${HCP_WINDOW} ›</span></div><div><b class="num">${v(H.avgGross)}</b><span>Avg gross</span></div><div><b class="num">${v(H.avgNet)}</b><span>Avg net</span></div></button>`})()}
+  </div>
   <p class="sub" style="margin:0 0 10px">${rs.length} round${rs.length>1?'s':''} · ${T.holes} holes</p>
   <div class="kpis">
     <div class="kpi"><b class="num">${per18(T.toPar)==null?'–':fmtPar(Math.round(per18(T.toPar)*10)/10)}</b><span>avg to par (18)</span></div>
@@ -557,7 +625,7 @@ function vStats(){
     <div class="kpi"><b class="num">${T.p5[1]?fmtPar(Math.round(T.p5[0]/T.p5[1]*100)/100):'–'}</b><span>par 5s</span></div>
     <div class="kpi"><b class="num">${diffs.length?fx(Math.min(...diffs)):'–'}</b><span>best differential</span></div>
   </div>
-  ${gmN?`<h2>Missed greens <span class="sub" style="font-weight:400">${gmN} misses</span></h2><div class="card" style="padding:8px 14px"><div class="target" style="margin:0;gap:6px">
+  ${gmN?`<h2>Missed greens <span class="sub" style="font-weight:400">${gmN} misses</span></h2><div><div class="target" style="margin:0;gap:6px">
     <span class="ph"></span><div class="kpi" style="text-align:center"><b class="num">${pct(gm.long,gmN)}</b><span>long</span></div><span class="ph"></span>
     <div class="kpi" style="text-align:center"><b class="num">${pct(gm.left,gmN)}</b><span>left</span></div><div class="kpi" style="text-align:center;background:var(--paper)"><b class="num">${pct(gmN-gm.long-gm.left-gm.right-gm.short-gm.pen,gmN)}</b><span>not noted</span></div><div class="kpi" style="text-align:center"><b class="num">${pct(gm.right,gmN)}</b><span>right</span></div>
     <span class="ph"></span><div class="kpi" style="text-align:center"><b class="num">${pct(gm.short,gmN)}</b><span>short</span></div><span class="ph"></span></div>${gm.pen?`<p class="sub" style="margin:8px 0 0;font-size:12px">${gm.pen} missed because of a penalty</p>`:''}</div>`:''}
@@ -577,8 +645,8 @@ function trendSvg(rs){
   const x=i=>pl+i*(W-pl-pr)/(pts.length-1),y=v=>pt+(mx-v)/(mx-mn)*(H-pt-pb);
   const grid=[];for(let g=mn;g<=mx;g+=2)grid.push(`<line x1="${pl}" x2="${W-pr}" y1="${y(g)}" y2="${y(g)}" stroke="#E4E7E2"/><text x="${pl-4}" y="${y(g)+4}" font-size="9" fill="#6B7770" text-anchor="end">${fmtPar(g)}</text>`);
   const path=pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.v).toFixed(1)).join(' ');
-  const dots=pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.5" fill="${p.t==='Sim'?'#A8701A':'#2E7A45'}"/>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}<path d="${path}" fill="none" stroke="#16241C" stroke-width="1.5"/>${dots}<text x="${pl}" y="${H-4}" font-size="9" fill="#6B7770">${pts[0].d}</text><text x="${W-pr}" y="${H-4}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].d}</text></svg>
+  const dots=pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.5" fill="${p.t==='Sim'?'#D9A21B':'#1F7A48'}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}<path d="${path}" fill="none" stroke="#0F3D26" stroke-width="1.5"/>${dots}<text x="${pl}" y="${H-4}" font-size="9" fill="#6B7770">${pts[0].d}</text><text x="${W-pr}" y="${H-4}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].d}</text></svg>
   <div class="sub" style="font-size:12px;margin-top:6px"><span class="dot ok"></span> real &nbsp; <span class="dot wait"></span> simulator &nbsp;· score to par, normalized to 18 holes</div>`;
 }
 
@@ -586,8 +654,9 @@ function trendSvg(rs){
 function blankCourse(){return {id:uid(),name:'',pars:Array(18).fill(4),si:Array.from({length:18},(_,i)=>i+1),tees:[{id:uid(),name:'White',rating:null,slope:null,yds:Array(18).fill(0)}],isNew:true}}
 function vCourses(){
   if(sub.edit)return vCourseEdit(sub.edit);
-  return `<div class="row between"><h1>Courses</h1><button class="btn small primary" onclick="go('courses',{edit:blankCourse(),tab:'par'})">Add course</button></div>
-  ${DB.courses.length?`<div class="card list" style="padding:0 14px">${DB.courses.map(c=>`<button class="item" onclick="go('courses',{edit:JSON.parse(JSON.stringify(DB.courses.find(x=>x.id==='${c.id}'))),tab:'par'})"><div class="grow"><div style="font-weight:600">${esc(c.name)}</div><div class="sub">Par ${coursePar(c)} · ${c.tees.map(t=>esc(t.name)+' '+(teeYds(t)||'–')).join(' · ')}</div></div><span class="sub">›</span></button>`).join('')}</div>`:`<div class="card empty">No courses yet. Add one so pars and yardages fill in automatically.</div>`}`;
+  return `<button class="btn small" onclick="go('more')">‹ More</button>
+  <div class="row between"><h1>Courses</h1><button class="btn small primary" onclick="go('courses',{edit:blankCourse(),tab:'par'})">Add course</button></div>
+  ${DB.courses.length?`<div class="card list" style="padding:0 14px">${DB.courses.map(c=>`<button class="item" onclick="go('courses',{edit:JSON.parse(JSON.stringify(DB.courses.find(x=>x.id==='${c.id}'))),tab:'par'})"><div class="grow"><div style="font-weight:700">${esc(c.name)}</div><div class="sub">Par ${coursePar(c)} · ${c.tees.map(t=>esc(t.name)+' '+(teeYds(t)||'–')).join(' · ')}</div></div><span class="sub">›</span></button>`).join('')}</div>`:`<div class="card empty">No courses yet. Add one so pars and yardages fill in automatically.</div>`}`;
 }
 function vCourseEdit(c){
   const tab=sub.tab==null?'par':sub.tab;const t=tab==='par'?null:c.tees[tab];
@@ -777,7 +846,7 @@ function vGames(){
   return `<div class="row between"><h1>Games</h1><div class="row" style="gap:6px"><button class="btn small" onclick="sub.rules=1;render()">Rules</button><button class="btn small" onclick="sub.roster=1;render()">Players</button></div></div>
   <button class="btn primary block" style="min-height:52px;margin-bottom:14px" onclick="newGame()">New game</button>
   ${gs.length?`<div class="card list" style="padding:0 14px">${gs.map(g=>{const r=playGame(g);const me=g.playerIds[0];return `<button class="item" onclick="go('games',{gopen:'${g.id}'})">
-    <div class="grow"><div style="font-weight:600">${GAMES[g.type].name}${g.net?' · net':''}</div><div class="sub">${g.date} · ${esc(g.courseName)} · ${g.playerIds.length} players</div></div>
+    <div class="grow"><div style="font-weight:700">${GAMES[g.type].name}${g.net?' · net':''}</div><div class="sub">${g.date} · ${esc(g.courseName)} · ${g.playerIds.length} players</div></div>
     <b class="num" style="color:${r.money[me]>0?'var(--green)':r.money[me]<0?'var(--red)':'var(--mute)'}">${money(r.money[me])}</b></button>`}).join('')}</div>`
   :`<div class="card empty">No games yet. Start one and the app keeps score and the money.</div>`}`;
 }
@@ -794,9 +863,9 @@ function vGameNew(){const f=sub.newgame,G=GAMES[f.type],cs=DB.courses;
   <div class="chips">${Object.entries(GAMES).map(([k,v])=>`<button class="${f.type===k?'on':''}" onclick="sub.newgame.type='${k}';render()">${v.name}</button>`).join('')}</div>
   <p class="sub" style="margin:8px 0 0">${G.blurb} · ${G.min===G.max?G.min+' players':G.min+'–'+G.max+' players'} · <a href="#" style="color:var(--green)" onclick="event.preventDefault();sub.newgame=null;sub.rule='${f.type}';render()">read the rules</a></p>
   <label class="f">Players ${sel.length?`<span class="num">(${sel.length})</span>`:''}</label>
-  <div class="card list" style="padding:0 14px">${DB.players.length?DB.players.map(p=>`<button class="item" onclick="togglePlayer('${p.id}')"><span class="dot ${sel.includes(p.id)?'ok':''}" style="${sel.includes(p.id)?'':'background:#e3e6e1'}"></span><div class="grow"><div style="font-weight:600">${esc(p.name)}${sel[0]===p.id?' <span class="badge gray">you</span>':''}</div><div class="sub">${playerIndex(p)==null?'no index':'index '+fx(playerIndex(p))}</div></div>${sel.includes(p.id)?`<span class="num sub">${sel.indexOf(p.id)+1}</span>`:''}</button>`).join(''):`<div class="empty" style="padding:14px">No players yet</div>`}</div>
+  <div class="card list" style="padding:0 14px">${DB.players.length?DB.players.map(p=>`<button class="item" onclick="togglePlayer('${p.id}')"><span class="dot ${sel.includes(p.id)?'ok':''}" style="${sel.includes(p.id)?'':'background:#e3e6e1'}"></span><div class="grow"><div style="font-weight:700">${esc(p.name)}${sel[0]===p.id?' <span class="badge gray">you</span>':''}</div><div class="sub">${playerIndex(p)==null?'no index':'index '+fx(playerIndex(p))}</div></div>${sel.includes(p.id)?`<span class="num sub">${sel.indexOf(p.id)+1}</span>`:''}</button>`).join(''):`<div class="empty" style="padding:14px">No players yet</div>`}</div>
   <button class="btn small block" onclick="editPlayer()">+ Add player</button>
-  ${G.teams?`<label class="f">Teams</label><div class="card" style="padding:10px 14px">${sel.map((p,i)=>`<div class="row between" style="padding:6px 0"><span>${esc(playerName(p))}</span><div class="seg" style="width:150px"><button class="${teamOf(i)===0?'on':''}" onclick="setTeam(${i},0)">Side 1</button><button class="${teamOf(i)===1?'on':''}" onclick="setTeam(${i},1)">Side 2</button></div></div>`).join('')}</div>`:''}
+  ${G.teams?`<label class="f">Teams</label><div class="card" style="padding:10px 14px">${sel.map((p,i)=>`<div class="row between" style="padding:6px 0"><span>${esc(playerName(p))}</span><div class="seg" style="width:170px"><button class="${teamOf(i)===0?'on':''}" onclick="setTeam(${i},0)">Side 1</button><button class="${teamOf(i)===1?'on':''}" onclick="setTeam(${i},1)">Side 2</button></div></div>`).join('')}</div>`:''}
   <label class="f">${G.wagerLabel}</label>
   <div class="chips">${[1,2,5,10,20].map(v=>`<button class="${f.wager===v?'on':''}" onclick="sub.newgame.wager=${v};render()">$${v}</button>`).join('')}<input class="in" style="width:90px;min-height:40px" type="number" inputmode="decimal" value="${f.wager}" onchange="sub.newgame.wager=+this.value||0">
   </div>
@@ -842,13 +911,13 @@ function vGamePlay(){const g=activeGame();if(!g){DB.activeGame=null;return vGame
   const hi=g.cur,h=g.holes[hi],G=GAMES[g.type];syncMyScore(g,hi);
   const r=playGame(g),st=r.st;
   const stepper=(pid)=>{const v=h.scores[pid]||0;const s=st[pid]?st[pid].per[hi]:0;
-    return `<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><span style="font-weight:600">${esc(playerName(pid))}</span>${g.net&&s?`<span class="sub"> · ${s} stroke${s>1?'s':''}</span>`:''}${v&&g.net?`<span class="sub"> · net ${v-s}</span>`:''}</div>
-    <div class="ctl" style="display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden"><button style="width:46px;height:42px;font-size:22px" onclick="setGScore('${pid}',-1)">−</button><b class="num" style="width:40px;text-align:center;line-height:42px;${v?'':'color:var(--mute)'}">${v||h.par}</b><button style="width:46px;height:42px;font-size:22px" onclick="setGScore('${pid}',1)">+</button></div></div>`};
+    return `<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><span style="font-weight:700">${esc(playerName(pid))}</span>${g.net&&s?`<span class="sub"> · ${s} stroke${s>1?'s':''}</span>`:''}${v&&g.net?`<span class="sub"> · net ${v-s}</span>`:''}</div>
+    <div class="ctl" style="display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff"><button style="width:46px;height:42px;font-size:22px" onclick="setGScore('${pid}',-1)">−</button><b class="num" style="width:40px;text-align:center;line-height:42px;${v?'':'color:var(--mute)'}">${v||h.par}</b><button style="width:46px;height:42px;font-size:22px" onclick="setGScore('${pid}',1)">+</button></div></div>`};
   return `<div class="row between" style="margin-bottom:6px"><div class="sub">${G.name}${g.net?' · net':''} · ${money(g.wager)} ${G.wagerLabel.toLowerCase()}</div><div class="row" style="gap:6px"><button class="btn small" onclick="openSheet(rulesSheet('${g.type}'))">Rules</button><button class="btn small" onclick="finishGame()">Finish</button></div></div>
-  <div class="holehead"><div><div class="hn num">${h.n}</div><div class="meta">Par ${h.par}${g.net?' · SI '+(courseSI(DB.courses.find(c=>c.id===g.courseId))[h.n-1]||h.n):''}</div></div>
+  <div class="holehead"><div><div class="hn num">Hole ${h.n}</div><div class="meta">Par ${h.par}${g.net?' · SI '+(courseSI(DB.courses.find(c=>c.id===g.courseId))[h.n-1]||h.n):''}</div></div>
     <div class="score"><b class="num" style="font-size:26px">${money(r.money[g.playerIds[0]])}</b><span>you, so far</span></div></div>
   ${g.type==='wolf'?vWolfPick(g,hi):''}
-  ${g.type==='scramble'?`<div class="flat" style="margin-bottom:10px">${[0,1].map(i=>`<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><span style="font-weight:600">Side ${i+1}</span><span class="sub"> · ${g.sides[i].map(p=>playerName(p).split(' ')[0]).join(', ')}</span></div><div class="ctl" style="display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden"><button style="width:46px;height:42px;font-size:22px" onclick="setTeamScore(${i},-1)">−</button><b class="num" style="width:40px;text-align:center;line-height:42px">${(h.team&&h.team[i])||h.par}</b><button style="width:46px;height:42px;font-size:22px" onclick="setTeamScore(${i},1)">+</button></div></div>`).join('')}</div>`
+  ${g.type==='scramble'?`<div class="flat" style="margin-bottom:10px">${[0,1].map(i=>`<div class="row between" style="padding:7px 0;border-bottom:1px solid var(--line)"><div class="grow"><span style="font-weight:700">Side ${i+1}</span><span class="sub"> · ${g.sides[i].map(p=>playerName(p).split(' ')[0]).join(', ')}</span></div><div class="ctl" style="display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff"><button style="width:46px;height:42px;font-size:22px" onclick="setTeamScore(${i},-1)">−</button><b class="num" style="width:40px;text-align:center;line-height:42px">${(h.team&&h.team[i])||h.par}</b><button style="width:46px;height:42px;font-size:22px" onclick="setTeamScore(${i},1)">+</button></div></div>`).join('')}</div>`
   :`<div class="flat" style="margin-bottom:10px">${g.playerIds.map(stepper).join('')}</div>`}
   ${r.detail[hi]&&r.detail[hi].text?`<p class="sub" style="margin:0 0 10px">${esc(r.detail[hi].text)}</p>`:''}
   ${g.type==='nassau'?`<button class="btn small block" style="margin-bottom:10px" onclick="addPress(${h.n})">Press from hole ${h.n}</button>`:''}
@@ -897,7 +966,7 @@ function copyGame(id){const g=DB.games.find(x=>x.id===id),r=playGame(g);
 function vRoster(){return `<button class="btn small" onclick="sub.roster=null;render()">‹ Games</button>
   <h1 style="margin-top:12px">Players</h1>
   <p class="sub" style="margin:-8px 0 12px">The first player you pick in a game is you. Handicap indexes drive net scoring.</p>
-  ${DB.players.length?`<div class="card list" style="padding:0 14px">${DB.players.map(p=>`<button class="item" onclick="editPlayer('${p.id}')"><div class="grow"><div style="font-weight:600">${esc(p.name)}</div><div class="sub">${playerIndex(p)==null?'no index':'index '+fx(playerIndex(p))}${p.me?' · you'+(p.sync!==false?', synced':''):''}</div></div><span class="sub">›</span></button>`).join('')}</div>`:`<div class="card empty">No players yet.</div>`}
+  ${DB.players.length?`<div class="card list" style="padding:0 14px">${DB.players.map(p=>`<button class="item" onclick="editPlayer('${p.id}')"><div class="grow"><div style="font-weight:700">${esc(p.name)}</div><div class="sub">${playerIndex(p)==null?'no index':'index '+fx(playerIndex(p))}${p.me?' · you'+(p.sync!==false?', synced':''):''}</div></div><span class="sub">›</span></button>`).join('')}</div>`:`<div class="card empty">No players yet.</div>`}
   <button class="btn primary block" onclick="editPlayer()">Add player</button>`}
 function editPlayer(id){const p=id?DB.players.find(x=>x.id===id):{id:uid(),name:'',index:null};
   openSheet(`<h2 style="margin-top:0">${id?'Edit player':'Add player'}</h2>
@@ -971,13 +1040,13 @@ function vRules(){
     <h1 style="margin-top:12px">${x.t}</h1><p class="sub" style="margin:-8px 0 14px">${x.who}</p>
     <div class="card"><h2 style="margin-top:0">How it works</h2><ol style="margin:0;padding-left:20px">${x.r.map(i=>`<li style="margin-bottom:7px">${i}</li>`).join('')}</ol></div>
     ${x.v&&x.v.length?`<div class="card"><h2 style="margin-top:0">Common variations</h2><ul style="margin:0;padding-left:20px">${x.v.map(i=>`<li style="margin-bottom:7px">${i}</li>`).join('')}</ul></div>`:''}
-    ${x.note?`<div class="card" style="background:var(--green-soft);border-color:var(--green-soft)">${x.note}</div>`:''}
+    ${x.note?`<div class="card" style="background:var(--green-soft)">${x.note}</div>`:''}
     ${x.app?`<div class="card"><h2 style="margin-top:0">In this app</h2>${x.app}</div>`:`<p class="sub">Not scored by the app yet — keep this one on the card.</p>`}
     ${GAMES[x.k]?`<button class="btn primary block" onclick="sub.rule=null;newGame();sub.newgame.type='${x.k}';render()">Start a ${x.t} game</button>`:''}`}
   return `<button class="btn small" onclick="sub.rules=null;render()">‹ Games</button>
   <h1 style="margin-top:12px">Rules</h1>
   <p class="sub" style="margin:-8px 0 12px">Scoring conventions vary by group — worth confirming house rules before you tee off.</p>
-  <div class="card list" style="padding:0 14px">${RULES.map(x=>`<button class="item" onclick="sub.rule='${x.k}';render()"><div class="grow"><div style="font-weight:600">${x.t}${GAMES[x.k]?'':' <span class="badge gray">not scored</span>'}</div><div class="sub">${x.who}</div></div><span class="sub">›</span></button>`).join('')}</div>
+  <div class="card list" style="padding:0 14px">${RULES.map(x=>`<button class="item" onclick="sub.rule='${x.k}';render()"><div class="grow"><div style="font-weight:700">${x.t}${GAMES[x.k]?'':' <span class="badge gray">not scored</span>'}</div><div class="sub">${x.who}</div></div><span class="sub">›</span></button>`).join('')}</div>
   <h2>Side bets</h2>
   <div class="card" style="padding:6px 14px">${SIDEBETS.map(([n,d])=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>${n}</b> — <span class="sub">${d}</span></div>`).join('')}
   <p class="sub" style="margin:8px 0">These stack on top of any of the games above.</p></div>`;
@@ -1073,7 +1142,7 @@ const pVal=(d,x)=>d.type==='holes'?x.score-x.max:x.score;
 function pSpark(d,h){const v=h.filter(x=>x.score!=null).slice(-10).map(x=>pVal(d,x));if(v.length<2)return '';
  let mn=Math.min(...v),mx=Math.max(...v);if(d.type==='count'){mn=0;mx=d.balls}if(mx===mn){mx++;mn--}
  const W=56,H=22,x=i=>2+i*(W-4)/(v.length-1),y=s=>{const t=(s-mn)/(mx-mn);return 2+(d.lower?t:1-t)*(H-4)};
- return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex:none" aria-hidden="true"><path d="${v.map((s,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(s).toFixed(1)).join(' ')}" fill="none" stroke="#1F6B3E" stroke-width="1.6"/><circle cx="${x(v.length-1).toFixed(1)}" cy="${y(v[v.length-1]).toFixed(1)}" r="2.2" fill="#1F6B3E"/></svg>`}
+ return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex:none" aria-hidden="true"><path d="${v.map((s,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(s).toFixed(1)).join(' ')}" fill="none" stroke="#1F7A48" stroke-width="1.6"/><circle cx="${x(v.length-1).toFixed(1)}" cy="${y(v[v.length-1]).toFixed(1)}" r="2.2" fill="#1F7A48"/></svg>`}
 function pTrend(d,h){const pts=h.filter(x=>x.score!=null).slice(-20);
  if(pts.length<2)return '<div class="sub" style="text-align:center;padding:14px">The trend shows after two sessions</div>';
  const vs=pts.map(p=>pVal(d,p));let mn=Math.min(...vs),mx=Math.max(...vs);
@@ -1085,8 +1154,8 @@ function pTrend(d,h){const pts=h.filter(x=>x.score!=null).slice(-20);
  const ticks=d.type==='count'?(()=>{const st=Math.max(1,Math.ceil(d.balls/4)),t=[];for(let g=0;g<d.balls;g+=st)t.push(g);t.push(d.balls);return t})():[0,1,2,3,4].map(k=>mn+(mx-mn)*k/4);
  const grid=[];for(const g of ticks){const lab=d.type==='holes'?fmtPar(Math.round(g)):String(Math.round(g*10)/10);
   grid.push(`<line x1="${pl}" x2="${W-pr}" y1="${y(g).toFixed(1)}" y2="${y(g).toFixed(1)}" stroke="#E4E7E2"/><text x="${pl-4}" y="${(y(g)+3).toFixed(1)}" font-size="9" fill="#6B7770" text-anchor="end">${lab}</text>`)}
- const bench=d.bench!=null?`<line x1="${pl}" x2="${W-pr}" y1="${y(d.bench).toFixed(1)}" y2="${y(d.bench).toFixed(1)}" stroke="#A8701A" stroke-dasharray="4 3" stroke-width="1.2"/>`:'';
- return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}${bench}<path d="${vs.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ')}" fill="none" stroke="#16241C" stroke-width="1.5"/>${vs.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2" fill="${pts[i].loc==='Outside'?'#2E7A45':'#A8701A'}"/>`).join('')}<text x="${pl}" y="${H-4}" font-size="9" fill="#6B7770">${pts[0].date}</text><text x="${W-pr}" y="${H-4}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].date}</text></svg>
+ const bench=d.bench!=null?`<line x1="${pl}" x2="${W-pr}" y1="${y(d.bench).toFixed(1)}" y2="${y(d.bench).toFixed(1)}" stroke="#D9A21B" stroke-dasharray="4 3" stroke-width="1.2"/>`:'';
+ return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid.join('')}${bench}<path d="${vs.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ')}" fill="none" stroke="#0F3D26" stroke-width="1.5"/>${vs.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2" fill="${pts[i].loc==='Outside'?'#1F7A48':'#D9A21B'}"/>`).join('')}<text x="${pl}" y="${H-4}" font-size="9" fill="#6B7770">${pts[0].date}</text><text x="${W-pr}" y="${H-4}" font-size="9" fill="#6B7770" text-anchor="end">${pts[pts.length-1].date}</text></svg>
  <div class="sub" style="font-size:12px;margin-top:6px"><span class="dot wait"></span> simulator &nbsp; <span class="dot ok"></span> outside${d.bench!=null?' &nbsp;· dashed line is the benchmark':''}${d.lower?'<br>Lower is better, so the chart is flipped: up is always better.':''}</div>`}
 function pLastDate(k){let d=null;DB.practice.forEach(s=>s.drills.forEach(x=>{if(x.k===k&&(!d||s.date>d))d=s.date}));return d}
 function daysSince(d){return Math.round((Date.parse(today()+'T12:00:00')-Date.parse(d+'T12:00:00'))/864e5)}
@@ -1096,7 +1165,7 @@ function pBaseline(){const last=pLastDate('cb-full');let t,cls,lab;
   if(dd<14){t=`Last run ${dd===0?'today':dd===1?'yesterday':dd+' days ago'}. Next one due in ${14-dd} day${14-dd===1?'':'s'}.`;cls='real';lab='on track'}
   else if(dd<=28){t=`Last run ${dd} days ago. Due now.`;cls='sim';lab='due'}
   else{t=`Last run ${dd} days ago.`;cls='red';lab='overdue'}}
- return `<button class="card row between" style="width:100%;text-align:left" onclick="sub.pdrill='cb-full';render();window.scrollTo(0,0)"><div class="grow"><div style="font-weight:600">Full Combine baseline</div><div class="sub">${t}</div></div><span class="badge ${cls}">${lab}</span></button>`}
+ return `<button class="card row between" style="width:100%;text-align:left" onclick="sub.pdrill='cb-full';render();window.scrollTo(0,0)"><div class="grow"><div style="font-weight:700">Full Combine baseline</div><div class="sub">${t}</div></div><span class="badge ${cls}">${lab}</span></button>`}
 function pLastGap(){let g={};[...DB.practice].sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>s.drills.forEach(x=>{if(x.gap)Object.keys(x.gap).forEach(c=>{g[c]=x.gap[c]})}));return g}
 
 
@@ -1175,7 +1244,7 @@ function pCbUndo(){const e=pCbDraft(),d=DR(e.k);const s=e.shots.pop();if(s&&d.pl
 
 
 /* ---- practice stats ---- */
-const PSC={good:'#1F6B3E',heel:'#B23A3A',toe:'#A8701A',left:'#A8701A',right:'#B23A3A',miss:'#C9CEC8'};
+const PSC={good:'#1F7A48',heel:'#B23A3A',toe:'#D9A21B',left:'#D9A21B',right:'#B23A3A',miss:'#C9CEC8'};
 const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 function shiftDate(d,n){const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)}
 function psSessions(){const loc=sub.psloc||'All',per=sub.psper||'90',cut=per==='All'?'':shiftDate(today(),-(+per));
@@ -1211,7 +1280,7 @@ function psWeeks(ss){const wk=d=>{const t=new Date(d+'T12:00:00');t.setDate(t.ge
  const mx=Math.max(2,...weeks.map(w=>by[w]?by[w].Sim+by[w].Outside:0));
  const W=320,H=118,pl=4,pb=18,pt=14,bw=(W-pl*2)/12;const y=v=>(H-pb-pt)*v/mx;
  const bars=weeks.map((w,i)=>{const o=by[w]||{Sim:0,Outside:0},x=pl+i*bw+3,ws=bw-6;const hs=y(o.Sim),ho=y(o.Outside);
-  return `<rect x="${x.toFixed(1)}" y="${(H-pb-hs).toFixed(1)}" width="${ws.toFixed(1)}" height="${hs.toFixed(1)}" rx="2" fill="#A8701A"/><rect x="${x.toFixed(1)}" y="${(H-pb-hs-ho).toFixed(1)}" width="${ws.toFixed(1)}" height="${ho.toFixed(1)}" rx="2" fill="#2E7A45"/>${o.Sim+o.Outside?`<text x="${(x+ws/2).toFixed(1)}" y="${(H-pb-hs-ho-3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#6B7770">${o.Sim+o.Outside}</text>`:''}${i%3===0?`<text x="${(x+ws/2).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="middle" fill="#6B7770">${new Date(w+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})}</text>`:''}`}).join('');
+  return `<rect x="${x.toFixed(1)}" y="${(H-pb-hs).toFixed(1)}" width="${ws.toFixed(1)}" height="${hs.toFixed(1)}" rx="2" fill="#D9A21B"/><rect x="${x.toFixed(1)}" y="${(H-pb-hs-ho).toFixed(1)}" width="${ws.toFixed(1)}" height="${ho.toFixed(1)}" rx="2" fill="#1F7A48"/>${o.Sim+o.Outside?`<text x="${(x+ws/2).toFixed(1)}" y="${(H-pb-hs-ho-3).toFixed(1)}" font-size="9" text-anchor="middle" fill="#6B7770">${o.Sim+o.Outside}</text>`:''}${i%3===0?`<text x="${(x+ws/2).toFixed(1)}" y="${H-4}" font-size="9" text-anchor="middle" fill="#6B7770">${new Date(w+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})}</text>`:''}`}).join('');
  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><line x1="0" x2="${W}" y1="${H-pb}" y2="${H-pb}" stroke="#E4E7E2"/>${bars}</svg><div class="sub" style="font-size:12px;margin-top:6px"><span class="dot wait"></span> simulator &nbsp; <span class="dot ok"></span> outside · sessions per week, last 12 weeks</div>`}
 function psTrendMark(d,es){const v=es.filter(x=>x.score!=null).map(x=>pVal(d,x));if(v.length<4)return '<span class="sub">–</span>';
  const k=Math.min(3,Math.floor(v.length/2)),diff=mean(v.slice(-k))-mean(v.slice(-2*k,-k));if(Math.abs(diff)<0.05)return '<span class="sub">even</span>';
@@ -1306,21 +1375,21 @@ function vPHome(){const f=sub.pform||(sub.pform={date:today(),loc:'Sim'});const 
  ${f.loc==='Sim'?`<button class="btn block" onclick="pStart(true)">Start with the driver routine</button>`:''}</div>
  <div style="margin-top:12px">${pBaseline()}</div>
  <h2>Progress</h2>${pDrillList(false)}
- ${ss.length?`<h2>Sessions</h2><div class="card list" style="padding:0 14px">${ss.map(s=>`<button class="item" onclick="go('practice',{psess:'${s.id}'})"><span class="dot ${s.pushed?'ok':'wait'}" title="${s.pushed?'Pushed':'Not pushed'}"></span><div class="grow"><div style="font-weight:600">${s.date} · ${PLOC[s.location]||esc(s.location)}</div><div class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.drills.map(x=>esc(x.name)).join(', ')||'no drills'}</div></div><span class="sub">›</span></button>`).join('')}</div>`:''}`}
+ ${ss.length?`<h2>Sessions</h2><div class="card list" style="padding:0 14px">${ss.map(s=>`<button class="item" onclick="go('practice',{psess:'${s.id}'})"><span class="dot ${s.pushed?'ok':'wait'}" title="${s.pushed?'Pushed':'Not pushed'}"></span><div class="grow"><div style="font-weight:700">${s.date} · ${PLOC[s.location]||esc(s.location)}</div><div class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.drills.map(x=>esc(x.name)).join(', ')||'no drills'}</div></div><span class="sub">›</span></button>`).join('')}</div>`:''}`}
 function pDrillList(active){const cat=sub.pcat||(sub.pcat=(active&&DB.activePractice.location==='Outside')?'outdoor':'driver');
  const chips=`<div class="chips" style="margin-bottom:10px">${PCATS.map(([k,l])=>`<button class="${cat===k?'on':''}" onclick="sub.pcat='${k}';render()">${l}</button>`).join('')}</div>`;
  const ds=DRILLS.filter(d=>d.cat===cat);
  const routine=active&&cat==='driver'?`<button class="btn green block" style="margin-bottom:10px" onclick="pRoutine()">Run the full driver routine (5 drills, ~40 balls)</button>`:'';
  const off=active&&ds[0]&&ds[0].loc!=='Any'&&ds[0].loc!==DB.activePractice.location?`<p class="sub" style="margin:-2px 0 8px;font-size:13px">These are ${ds[0].loc==='Sim'?'simulator':'outdoor'} drills; they'll be logged under this ${PLOC[DB.activePractice.location].toLowerCase()} session.</p>`:'';
  return chips+routine+off+`<div class="card list" style="padding:0 14px">${ds.map(d=>{const h=pHist(d.k);
-  const label=`<div style="font-weight:600">${d.name}${d.club?` <span class="sub" style="font-weight:400">${esc(d.club)}</span>`:''}</div><div class="sub">${pSumLine(d,h)}</div>`;
+  const label=`<div style="font-weight:700">${d.name}${d.club?` <span class="sub" style="font-weight:400">${esc(d.club)}</span>`:''}</div><div class="sub">${pSumLine(d,h)}</div>`;
   return active?`<div class="item"><button class="grow" style="text-align:left;min-height:44px" onclick="pOpen('${d.k}')">${label}</button>${pSpark(d,h)}<button class="btn small" onclick="sub.pdrill='${d.k}';render();window.scrollTo(0,0)">Stats</button></div>`
    :`<button class="item" onclick="sub.pdrill='${d.k}';render();window.scrollTo(0,0)"><div class="grow">${label}</div>${pSpark(d,h)}<span class="sub">›</span></button>`}).join('')}</div>`}
 function pDetail(x){return [x.brk,...(x.stats||[]).filter(t=>t[1]!==''&&t[1]!=null).map(t=>t[0]+' '+t[1]),x.notes].filter(Boolean).map(esc).join(' · ')}
 function vPActive(){const ap=DB.activePractice;
  return `${pTopSeg('log')}
  <div class="row between" style="margin-bottom:10px"><div><div style="font-weight:700;font-size:18px">Session in progress</div><div class="sub">${ap.date} <span class="badge ${ap.location==='Sim'?'sim':'real'}">${PLOC[ap.location]}</span></div></div><button class="btn small" onclick="pFinishSheet()">Finish</button></div>
- ${ap.drills.length?`<div class="card list" style="padding:0 14px">${ap.drills.map((x,i)=>`<div class="item"><div class="grow"><div style="font-weight:600">${esc(x.name)}</div><div class="sub">${pDetail(x)}</div></div><b class="num" style="font-size:18px;white-space:nowrap">${pFmt(x)}</b><button style="min-width:36px;min-height:40px;color:var(--mute);font-size:20px" aria-label="Remove ${esc(x.name)}" onclick="pDelEntry(${i})">×</button></div>`).join('')}</div>`
+ ${ap.drills.length?`<div class="card list" style="padding:0 14px">${ap.drills.map((x,i)=>`<div class="item"><div class="grow"><div style="font-weight:700">${esc(x.name)}</div><div class="sub">${pDetail(x)}</div></div><b class="num" style="font-size:18px;white-space:nowrap">${pFmt(x)}</b><button style="min-width:36px;min-height:40px;color:var(--mute);font-size:20px" aria-label="Remove ${esc(x.name)}" onclick="pDelEntry(${i})">×</button></div>`).join('')}</div>`
   :`<div class="card empty" style="padding:18px">Pick a drill below. Each one logs a score you can track over time.</div>`}
  <h2>Add a drill</h2>${pDrillList(true)}`}
 function pBallsTxt(d){return d.type==='count'?d.balls+' balls':d.type==='ladder'?d.rungs.length+' rungs':d.type==='closeout'?d.need+' in a row':d.type==='holes'?d.holes+' holes, par '+d.holes*d.par:d.type==='streak'?'until a miss':''}
@@ -1330,7 +1399,7 @@ function vDrillLog(){const ap=DB.activePractice,e=ap.draft,d=DR(e.k),c=pCalc(d,e
  const cbS=d.plan&&c.score==null&&(e.shots||[]).length?cbSummary(e.shots):null;
  const scoreBox=['stats','gapping'].includes(d.type)||(d.plan&&c.score==null&&!cbS)?'':cbS?`<div class="score"><b class="num">${fx(cbS.prox)}</b><span>avg prox ft</span></div>`:`<div class="score"><b class="num">${c.score==null?'–':pFmt({k:d.k,score:c.score,max:c.max})}</b><span>${d.type==='number'?'score':c.done?'complete':'so far'}</span></div>`;
  return `<div class="row between" style="margin-bottom:6px"><div class="sub">${step>=0?`Driver routine · ${step+1} of ${ROUTINE.length}`:catName(d.cat)} <span class="badge ${ap.location==='Sim'?'sim':'real'}">${PLOC[ap.location]}</span></div><button class="btn small" onclick="pCancel()">${step>=0?'Stop routine':'Cancel'}</button></div>
- <div class="holehead"><div class="grow" style="min-width:0"><div style="font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1">${d.name}</div><div class="meta">${[d.club,pBallsTxt(d)].filter(Boolean).map(esc).join(' · ')}</div></div>${scoreBox}</div>
+ <div class="holehead"><div class="grow" style="min-width:0"><div style="font-family:var(--disp);font-size:34px;font-weight:700;letter-spacing:.02em;line-height:1.05;text-transform:uppercase">${d.name}</div><div class="meta">${[d.club,pBallsTxt(d)].filter(Boolean).map(esc).join(' · ')}</div></div>${scoreBox}</div>
  <p class="sub" style="margin:-4px 0 10px">${esc(d.what)}</p>
  ${pInput(d,e,c)}
  ${pStatsInputs(d,e)}
@@ -1405,7 +1474,7 @@ function vPSession(s){const busy=inflight.has(s.id);const gapE=s.drills.find(x=>
  return `<button class="btn small" onclick="go('practice')">‹ Practice</button>
  <h1 style="margin-top:12px">${s.date}</h1>
  <p class="sub" style="margin:-8px 0 12px"><span class="badge ${s.location==='Sim'?'sim':'real'}">${PLOC[s.location]||esc(s.location)}</span> · ${s.drills.length} drill${s.drills.length===1?'':'s'} · ${s.pushed?'<span class="badge gray">Pushed '+new Date(s.pushedAt).toLocaleDateString()+'</span>':'<span class="badge red">Not pushed</span>'}</p>
- <div class="card list" style="padding:0 14px">${s.drills.map(x=>`<div class="item" style="align-items:flex-start"><div class="grow"><div style="font-weight:600">${esc(x.name)}</div><div class="sub">${pDetail(x)}</div></div><b class="num" style="font-size:18px;white-space:nowrap">${pFmt(x)}</b></div>`).join('')}</div>
+ <div class="card list" style="padding:0 14px">${s.drills.map(x=>`<div class="item" style="align-items:flex-start"><div class="grow"><div style="font-weight:700">${esc(x.name)}</div><div class="sub">${pDetail(x)}</div></div><b class="num" style="font-size:18px;white-space:nowrap">${pFmt(x)}</b></div>`).join('')}</div>
  ${s.drills.filter(x=>x.shots&&x.shots.length).map(x=>`<h2>${esc(x.name)} <span class="sub" style="font-weight:400">${x.shots.length} shots</span></h2>${cbTable(x.shots)}`).join('')}
  ${gapE?`<h2>Gapping</h2>${pGapTable(gapE.gap,null)}`:''}
  <div class="stack"><button class="btn green block" ${busy?'disabled':''} onclick="pushPractice(DB.practice.find(x=>x.id==='${s.id}'))">${busy?'<span class="spin"></span>Pushing…':s.pushed?'Push again':'Push to Sheets'}</button>
@@ -1488,7 +1557,8 @@ function rebuildPractice(j){const by={},gap={},cs={};
 
 /* ===================== SETTINGS ===================== */
 function vSettings(){const s=DB.settings;
-  return `<h1>Settings</h1>
+  return `<button class="btn small" onclick="go('more')">‹ More</button>
+  <h1 style="margin-top:12px">Settings</h1>
   <div class="card"><h2 style="margin-top:0">Google Sheets</h2>
     <label class="f">Apps Script web app URL</label><input class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(s.sheetUrl)}" onchange="DB.settings.sheetUrl=this.value.trim();save()">
     <p class="sub" style="margin:8px 0 0">Rounds and practice sessions push here when you finish or tap Push, and automatically when you come back online.</p>
