@@ -1585,6 +1585,10 @@ function vSettings(){const s=DB.settings;
     <p class="sub" style="margin:0 0 10px">Rebuilds rounds, holes, shots and practice sessions from your sheet. Anything already on this phone is skipped, so it's safe to run twice. Games and players aren't stored in the sheet.</p>
     <button class="btn block" ${restoring?'disabled':''} onclick="restoreFromSheets()">${restoring?'<span class="spin"></span>Restoring…':'Restore from Sheets'}</button>
   </div>
+  <div class="card"><h2 style="margin-top:0">App update</h2>
+    <p class="sub" style="margin:0 0 10px">If a new version isn't showing up, this clears the app's saved files and reloads it. Your rounds, practice and settings are not touched.</p>
+    <button class="btn block" onclick="refreshApp()">Refresh app files</button>
+  </div>
   <div class="card"><h2 style="margin-top:0">Backup</h2>
     <p class="sub" style="margin:0 0 10px">Everything lives on this phone. Export a backup now and then.</p>
     <div class="stack"><button class="btn block" onclick="exportJSON()">Export backup file</button><button class="btn block" onclick="copyJSON()">Copy backup to clipboard</button>
@@ -1595,8 +1599,14 @@ function vSettings(){const s=DB.settings;
     <p class="sub" style="margin:0 0 10px">Twenty made-up rounds so you can see the stats and the sheet. Remove them before you start logging for real.</p>
     <div class="stack">${DB.rounds.some(r=>r.sample)?`<button class="btn block" onclick="removeSamples()">Remove sample rounds</button>`:`<button class="btn block" onclick="loadSamples()">Load 20 sample rounds</button>`}</div>
   </div>
-  <p class="sub" style="text-align:center">Golf Log v2 · ${DB.rounds.length} rounds · ${DB.practice.length} practice sessions · ${DB.courses.length} courses</p>`;
+  <p class="sub" style="text-align:center">Golf Log v2 · build ${BUILD} · ${DB.rounds.length} rounds · ${DB.practice.length} practice sessions · ${DB.courses.length} courses</p>`;
 }
+const BUILD='2026-11-02-a';
+async function refreshApp(){
+  toast('Refreshing app files…',true);
+  try{const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));
+    const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}catch(e){}
+  location.reload()}
 let testing=false;
 async function testSheet(){if(testing)return;const url=DB.settings.sheetUrl;if(!url)return toast('Paste the script URL first');
   if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url))return toast('URL should start with https://script.google.com/macros/s/ and end with /exec');
