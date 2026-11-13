@@ -144,6 +144,8 @@ textarea.in{min-height:80px;padding:10px 12px}
 .chips button.on{background:var(--deep);color:#fff;border-color:var(--deep)}
 .chips button.on.bad{background:var(--red);border-color:var(--red)}
 .chips button.on.good{background:var(--green);border-color:var(--green)}
+.chips.pick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.chips.pick button{min-height:46px;padding:0;border-radius:14px;font-family:var(--disp);font-size:21px;letter-spacing:.04em;text-transform:uppercase}
 /* stats */
 .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .kpi{background:var(--card);border:0;border-radius:16px;padding:8px 12px;min-width:0;overflow:hidden}
@@ -216,6 +218,21 @@ th:first-child,td:first-child{text-align:left}
 /* ===================== storage ===================== */
 const K='golflog.v2';
 const DEF_CLUBS=['Dr','3W','Hy','4i','5i','6i','7i','8i','9i','PW','50','54','58'];
+/* ----- bag: tap to choose clubs (Settings) ----- */
+const CLUB_GROUPS=[['Woods',['Dr','3W','4W','5W','6W','7W','8W','9W']],['Irons',['2i','3i','4i','5i','6i','7i','8i','9i']],['Wedges',['PW','50','52','54','56','58','60']]];
+const ALL_CLUBS=CLUB_GROUPS.flatMap(g=>g[1]);
+const CLUB_ORDER=[...CLUB_GROUPS[0][1],'Hy',...CLUB_GROUPS[1][1],...CLUB_GROUPS[2][1]];
+const clubRank=k=>{const i=CLUB_ORDER.indexOf(k);return i<0?CLUB_ORDER.length:i};
+function clubExtras(){return [...new Set(DB.settings.clubs.filter(k=>!ALL_CLUBS.includes(k)))]}
+function clubPicker(){const bag=DB.settings.clubs,extra=clubExtras(),all=[...ALL_CLUBS,...extra];
+  const groups=extra.length?[...CLUB_GROUPS,['Not on the list',extra]]:CLUB_GROUPS;
+  return `<p class="sub" style="margin:0">Tap a club to put it in the bag or take it out. <b class="num" style="color:var(--ink)">${bag.length}</b> in the bag.</p>`
+  +groups.map(([l,ks])=>`<label class="f">${l}</label><div class="chips pick">${ks.map(k=>`<button class="${bag.includes(k)?'on':''}" aria-pressed="${bag.includes(k)}" onclick="toggleClub(${all.indexOf(k)})">${esc(k)}</button>`).join('')}</div>`).join('')
+  +(extra.length?`<p class="sub" style="font-size:12px;margin:8px 0 0">Carried over from your typed list. Take one out and it leaves the picker; shots already logged with it stay in your stats.</p>`:'')}
+function toggleClub(i){const k=[...ALL_CLUBS,...clubExtras()][i];if(k==null)return;
+  const bag=DB.settings.clubs.slice(),at=bag.indexOf(k);
+  if(at>=0){if(bag.length===1)return toast('Keep at least one club in the bag');bag.splice(at,1)}else bag.push(k);
+  DB.settings.clubs=bag.sort((a,b)=>clubRank(a)-clubRank(b));save();render()}
 const RESULTS={good:'Good',left:'Left',right:'Right',short:'Short',long:'Long',pen:'Penalty'};
 const LIES=['Tee','Fairway','Rough','Sand','Fringe','Recovery'];
 const STRIKES=['Center','Heel','Toe','Thin','Fat'];
@@ -608,7 +625,7 @@ function vStats(){
       if(h.mode==='shots')h.shots.forEach(s=>{const o=club[s.club]||(club[s.club]={n:0,good:0,left:0,right:0,short:0,long:0,pen:0,strikeN:0,strike:{Center:0,Heel:0,Toe:0,Thin:0,Fat:0,High:0},proxN:0,proxSum:0});o.n++;o[s.result]++;if(s.strike&&o.strike[s.strike]!=null){o.strikeN++;o.strike[s.strike]++}if(s.prox!=null){o.proxN++;o.proxSum+=s.prox;proxN++;proxSum+=s.prox}})});
   });
   const per18=v=>T.holes?v/T.holes*18:null;
-  const order=DB.settings.clubs;const clubs=Object.keys(club).sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+  const clubs=Object.keys(club).sort((a,b)=>clubRank(a)-clubRank(b));
   return `<div class="band"><h1>Stats</h1>${seg}
   ${(()=>{const H=hcpHistory(f);const v=x=>x==null?'–':fx(x);return `<button class="hband" onclick="sub.hcp=1;sub.htype='${f}';render()"><div><b class="big num">${v(H.index)}</b><span>Handicap · last ${HCP_WINDOW} ›</span></div><div><b class="num">${v(H.avgGross)}</b><span>Avg gross</span></div><div><b class="num">${v(H.avgNet)}</b><span>Avg net</span></div></button>`})()}
   </div>
@@ -1464,8 +1481,7 @@ function vDrillHist(k){const d=DR(k);if(!d){sub.pdrill=null;return vPractice()}
  ${body}
  <p class="sub" style="font-size:12px">Score: ${esc(d.score)}</p>
  <button class="btn primary block" onclick="pStartDrill('${k}')">${DB.activePractice?'Log this drill now':'Start a session with this drill'}</button>`}
-function pGapTable(g,prev){const order=DB.settings.clubs;
- const cl=[...order.filter(c=>g[c]),...Object.keys(g).filter(c=>!order.includes(c))].filter(c=>g[c]&&(g[c].carry!=null||g[c].spin!=null));
+function pGapTable(g,prev){const cl=Object.keys(g).sort((a,b)=>clubRank(a)-clubRank(b)).filter(c=>g[c]&&(g[c].carry!=null||g[c].spin!=null));
  const withCarry=cl.filter(c=>g[c].carry!=null);
  return `<div class="card tscroll" style="padding:6px 10px"><table><tr><th>Club</th><th>Carry</th><th>Gap</th><th>Spin</th>${prev?'<th>Change</th>':''}</tr>
  ${cl.map(c=>{const i=withCarry.indexOf(c),nx=i>=0?withCarry[i+1]:null;const gap=i>=0&&nx?g[c].carry-g[nx].carry:null;const pc=prev&&prev[c]&&prev[c].carry!=null&&g[c].carry!=null?g[c].carry-prev[c].carry:null;
@@ -1575,7 +1591,7 @@ function vSettings(){const s=DB.settings;
     <button class="btn block" onclick="exportCourses()">Export my courses</button></div>
   </div>
   <div class="card"><h2 style="margin-top:0">Clubs</h2>
-    <label class="f">Comma-separated, in bag order</label><input class="in" value="${esc(s.clubs.join(', '))}" onchange="DB.settings.clubs=this.value.split(',').map(x=>x.trim()).filter(Boolean);save();render()">
+    ${clubPicker()}
   </div>
   <div class="card"><h2 style="margin-top:0">Defaults for new rounds</h2>
     <label class="f">Round type</label><div class="seg"><button class="${s.defaultType==='Real'?'on':''}" onclick="DB.settings.defaultType='Real';save();render()">Real</button><button class="${s.defaultType==='Sim'?'on':''}" onclick="DB.settings.defaultType='Sim';save();render()">Simulator</button></div>
@@ -1601,7 +1617,7 @@ function vSettings(){const s=DB.settings;
   </div>
   <p class="sub" style="text-align:center">Golf Log v2 · build ${BUILD} · ${DB.rounds.length} rounds · ${DB.practice.length} practice sessions · ${DB.courses.length} courses</p>`;
 }
-const BUILD='2026-11-02-a';
+const BUILD='2026-11-12-a';
 async function refreshApp(){
   toast('Refreshing app files…',true);
   try{const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));
